@@ -2,7 +2,7 @@ from torch import nn
 import torch.nn.functional as F
 from torchvision.models.vgg import cfgs
 
-from utils import Base
+from .utils import Base
 
 def lenet():
     return LeNet()
