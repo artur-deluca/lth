@@ -3,6 +3,7 @@ from torch import nn
 class Base(nn.Module):
     def __init__(self):
         super(Base, self).__init__()
+        self.criterion = nn.CrossEntropyLoss()
 
     def _initialize_weights(self):
         for m in self.modules():
