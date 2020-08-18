@@ -15,7 +15,7 @@ def load_CIFAR10(root: str, download: bool = False, augment: bool = False, valid
 
     transform = transforms.Compose(_augment + _transform if augment else _transform)
 
-    batch_size = kwargs.get("batch_size", 64)
+    batch_size = kwargs.get("batch_size", 128)
 
     trainset = CIFAR10(root=root, train=True, download=download, transform=transform)
     trainset, validset = _validation_split(trainset, validation)

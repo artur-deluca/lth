@@ -69,8 +69,9 @@ def iterative_pruning(
             losses["validation"].append(evaluate(validloader, train=False))
             losses["test"].append(evaluate(testloader, train=False))
 
+            sparsity = get_sparsity(model, prune_global)
             print(
-                    f"[round: {r} | epoch: {epoch}] train: {losses['train'][-1]:.3f} validation: {losses['validation'][-1]:.3f}"
+                    f"[round: {r} | epoch: {epoch}] train: {losses['train'][-1]:.3f} validation: {losses['validation'][-1]:.3f} | sparsity: {sparsity:.0f}"
             ) if verbose else None
 
             if earlystopping:
@@ -101,8 +102,8 @@ def write_data(model, losses, directory):
     with open(os.path.join(directory, "loss.json"), "w") as f:
         json.dump(losses, f)
 
+def _fetch_layers(model):
 
-def prune_net(model, rate, fc_rate=None, globally=False):
     loc = locals()
     params = [name for name, _ in model.named_parameters()]
     params = [re.sub(r"(\.)([0-9]+)", r"[\2]", name) for name in params]
@@ -112,6 +113,20 @@ def prune_net(model, rate, fc_rate=None, globally=False):
             re.split(r"(\.)(\w+$)", name) for name in params
         ]
     ]
+    return params
+
+def get_sparsity(model, globally=False):
+
+    params = list(model.parameters())
+
+    if globally:
+        return 100.0 * sum([int(torch.sum(x == 0)) for x in params]) / sum([x.nelement() for x in params])
+
+    return 100.0 * (sum([int(torch.sum(x == 0)) / x.nelement() for x in params]) / len(params))
+
+def prune_net(model, rate, fc_rate=None, globally=False):
+
+    params = _fetch_layers(model)
 
     if globally:
         prune.global_unstructured(
