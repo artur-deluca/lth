@@ -75,7 +75,7 @@ def iterative_pruning(
 
             if earlystopping:
                 if abs(losses['validation'][-1] - prev_loss) / prev_loss < tol:
-                    streak += 0
+                    streak += 1
                 else:
                     streak = 0
 
