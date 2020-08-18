@@ -32,6 +32,7 @@ parser.add_argument(
     "-es", "--earlystop", metavar='', default=0, type=int, help="Early stopping epochs"
 )
 parser.add_argument("-s", "--save", metavar='', default="./experiments/", type=str, help="Directory to store the experiments")
+parser.add_argument("-rs", "--seed", metavar='', default=344, type=int, help="Random seed")
 parser.add_argument(
     "-fc",
     "--fc_rate",
@@ -64,7 +65,7 @@ args.gpu = torch.device('cuda') if args.gpu else args.gpu
 
 if __name__ == "__main__":
 
-    torch.manual_seed(344)
+    torch.manual_seed(args.seed)
 
     model = lth.models._dispatcher[args.net](
         optim=args.optim, lr=args.learning_rate, batch_norm=args.batch_norm
