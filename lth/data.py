@@ -1,10 +1,10 @@
 import torchvision
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import CIFAR10, MNIST
 
 
-def load_CIFAR10(root: str, download: bool = False, augment: bool = False, **kwargs):
+def load_CIFAR10(root: str, download: bool = False, augment: bool = False, validation = 5000, **kwargs):
 
     # data augmentation
     _transform = [
@@ -16,43 +16,66 @@ def load_CIFAR10(root: str, download: bool = False, augment: bool = False, **kwa
     transform = transforms.Compose(_augment + _transform if augment else _transform)
 
     batch_size = kwargs.get("batch_size", 64)
-    num_workers = kwargs.get("num_workers", 2)
 
     trainset = CIFAR10(root=root, train=True, download=download, transform=transform)
-    trainloader = DataLoader(
-        trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-    )
+    trainset, validset = _validation_split(trainset, validation)
+
     testset = CIFAR10(
         root=root,
         train=False,
         download=download,
         transform=transforms.Compose(_transform),
     )
-    testloader = DataLoader(
-        testset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+
+    trainloader = DataLoader(
+        trainset, batch_size=batch_size, shuffle=True
     )
 
-    return trainloader, testloader
+    validloader = DataLoader(
+        validset, batch_size=batch_size, shuffle=True
+    )
+
+    testloader = DataLoader(
+        testset, batch_size=batch_size, shuffle=False,
+    ) 
+    return trainloader, validloader, testloader
 
 
-def load_MNIST(root: str, download: bool = False, **kwargs):
+def load_MNIST(root: str, download: bool = False, validation = 5000, **kwargs):
 
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize(mean=[0.1307], std=[0.3081])]
     )
-    batch_size = kwargs.get("batch_size", 4)
-    num_workers = kwargs.get("num_workers", 2)
+    batch_size = kwargs.get("batch_size", 64)
 
     trainset = MNIST(root=root, train=True, download=download, transform=transform)
-    trainloader = DataLoader(
-        trainset, batch_size=batch_size, shuffle=True, num_workers=num_workers
-    )
+    trainset, validset = _validation_split(trainset, validation)
+
     testset = MNIST(root=root, train=False, download=download, transform=transform)
-    testloader = DataLoader(
-        testset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+
+    trainloader = DataLoader(
+        trainset, batch_size=batch_size, shuffle=True
     )
 
-    return trainloader, testloader
+    validloader = DataLoader(
+        validset, batch_size=batch_size, shuffle=True
+    )
+
+    testloader = DataLoader(
+        testset, batch_size=batch_size, shuffle=False
+    )
+
+    return trainloader, validloader, testloader
+
+
+def _validation_split(dataloader, validation_size):
+    if validation_size < 1:
+        split_size = int(validation_size * len(dataloader))
+    else:
+        split_size = validation_size
+
+    train, validation = random_split(dataloader, [len(dataloader) - split_size, split_size])
+    return train, validation
 
 
 def build_meta(model, data, **kwargs):

@@ -5,12 +5,12 @@ import torch
 import torch.nn.utils.prune as prune
 from torch import nn
 
-tol = 1e-3
-
+tol = 0.01
 
 def iterative_pruning(
     model,
     trainloader,
+    validloader,
     testloader,
     epochs: int,
     rounds: int,
@@ -28,19 +28,10 @@ def iterative_pruning(
 
     original_weights = model.state_dict()
 
-    for r in range(0, rounds + 1):
-
-        prev_loss = 1e10
-        streak = 0
-        losses = {"train": list(), "test": list()}
-        model.load_state_dict(original_weights)
-
-        for epoch in range(1, epochs + 1):
-
-            train_loss = 0.0
-            test_loss = 0.0
-
-            for inputs, labels in trainloader:
+    def evaluate(dataloader, train=False):
+        dataloss = 0.0
+        if train:
+            for inputs, labels in dataloader:
 
                 if device: inputs, labels = inputs.to(device), labels.to(device)
 
@@ -51,28 +42,39 @@ def iterative_pruning(
                 loss.backward()
                 model.optim.step()
 
-                train_loss += loss.item()
+                dataloss += loss.item()
+        else:
 
-            train_loss /= trainloader.batch_size
-            losses["train"].append(train_loss)
-
-            for inputs, labels in testloader:
+            for inputs, labels in dataloader:
 
                 if device: inputs, labels = inputs.to(device), labels.to(device)
 
                 outputs = model(inputs)
                 loss = model.criterion(outputs, labels)
-                test_loss += loss.item()
+                dataloss += loss.item()
 
-            test_loss /= testloader.batch_size
-            losses["test"].append(test_loss)
+        return dataloss / dataloader.batch_size
+
+
+    for r in range(0, rounds + 1):
+
+        prev_loss = 1e10
+        streak = 0
+        losses = {'train': list(), 'test': list(), 'validation': list()}
+        model.load_state_dict(original_weights)
+
+        for epoch in range(1, epochs + 1):
+
+            losses["train"].append(evaluate(trainloader, train=True))
+            losses["validation"].append(evaluate(validloader, train=False))
+            losses["test"].append(evaluate(testloader, train=False))
 
             print(
-                    f"[round: {r} | epoch: {epoch}] train: {train_loss:.3f} test: {test_loss:.3f}"
+                    f"[round: {r} | epoch: {epoch}] train: {losses['train'][-1]:.3f} validation: {losses['validation'][-1]:.3f}"
             ) if verbose else None
 
             if earlystopping:
-                if abs(train_loss - prev_loss) < tol:
+                if abs(losses['validation'][-1] - prev_loss) / prev_loss < tol:
                     streak += 0
                 else:
                     streak = 0
@@ -81,8 +83,7 @@ def iterative_pruning(
                     print("Early stopping...")
                     break
 
-            train_loss = 0.0
-            test_loss = 0.0
+            prev_loss = losses['validation'][-1] 
 
         if save:
             directory = os.path.join(save, str(r))
@@ -111,7 +112,6 @@ def prune_net(model, rate, fc_rate=None, globally=False):
             re.split(r"(\.)(\w+$)", name) for name in params
         ]
     ]
-
 
     if globally:
         prune.global_unstructured(

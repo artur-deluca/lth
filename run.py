@@ -3,11 +3,12 @@ import lth
 import torch
 from datetime import datetime
 from os import path, makedirs
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 
 parser = ArgumentParser(
-    description="Run experiments with Iterative Prunning, identifying Lottery Tickets"
+    description="Run experiments with Iterative Prunning, identifying Lottery Tickets",
+    formatter_class=ArgumentDefaultsHelpFormatter
 )
 parser.add_argument(
     "net",
@@ -16,30 +17,31 @@ parser.add_argument(
 )
 parser.add_argument("dataset", type=str, help="Dataset type (MNIST or CIFAR10)")
 parser.add_argument(
-    "--batch_norm", action="store_true", help="Use batch norm in architecture"
+    "-p", "--data", metavar='', default="./datasets/", type=str, help="Path to root dataset folder"
+)
+parser.add_argument("-o", "--optim", metavar='', default="SGD", type=str, help="Model's optimizer")
+parser.add_argument(
+    "-lr", "--learn_rate", metavar='', default=0.005, type=float, help="Learning rate"
+)
+parser.add_argument("-e", "--epochs", metavar='', default=100, type=int, help="Training epochs")
+parser.add_argument("-r", "--rounds", metavar='', default=15, type=int, help="Prunning rounds")
+parser.add_argument(
+    "-pr", "--prune_rate", metavar='', default=0.2, type=float, help="Prunning rate 0-.99"
 )
 parser.add_argument(
-    "-p", "--data", default="./datasets/", type=str, help="Path to root dataset folder"
+    "-es", "--earlystop", metavar='', default=0, type=int, help="Early stopping epochs"
 )
-parser.add_argument("-o", "--optim", default="SGD", type=str, help="Model`s optimizer")
-parser.add_argument(
-    "-lr", "--learning_rate", default=0.005, type=float, help="Learning rate"
-)
-parser.add_argument("-e", "--epochs", default=100, type=int, help="Training epochs")
-parser.add_argument("-r", "--rounds", default=15, type=int, help="Prunning rounds")
-parser.add_argument(
-    "-pr", "--prune_rate", default=0.2, type=float, help="Prunning rate 0-.99"
-)
-parser.add_argument("--verbose", action="store_true", help="Verbosity mode")
-parser.add_argument(
-    "-es", "--earlystopping", default=0, type=int, help="Early stopping epochs"
-)
+parser.add_argument("-s", "--save", metavar='', default="./experiments/", type=str, help="Directory to store the experiments")
 parser.add_argument(
     "-fc",
     "--fc_rate",
+    metavar='',
     default=None,
     type=int,
     help="Different prunning rate for Fully Connected layers",
+)
+parser.add_argument(
+    "--batch_norm", action="store_true", help="Use batch norm in architecture"
 )
 parser.add_argument(
     "--prune_global", action="store_true", help="Global prunnning instead of layer-wise"
@@ -47,7 +49,7 @@ parser.add_argument(
 parser.add_argument(
     "--gpu", action="store_true", help="Allow for GPU usage"
 )
-parser.add_argument("-s", "--save", default="./experiments/", type=str, help="")
+parser.add_argument("--verbose", action="store_true", help="Verbosity mode")
 
 parser.set_defaults(batch_norm=False)
 parser.set_defaults(prune_global=False)
@@ -68,7 +70,7 @@ if __name__ == "__main__":
         optim=args.optim, lr=args.learning_rate, batch_norm=args.batch_norm
     )
     datakey = [k for k in lth.data._dispatcher.keys() if args.dataset in k][0]
-    train, test = lth.data._dispatcher[datakey](path.join(args.data, datakey))
+    train, validation, test = lth.data._dispatcher[datakey](path.join(args.data, datakey))
 
     if args.save:
         net = args.net + f'{"_bn_" if args.batch_norm else ""}'
@@ -94,6 +96,7 @@ if __name__ == "__main__":
     lth.iterative_pruning(
         model,
         train,
+        validation,
         test,
         args.epochs,
         args.rounds,
