@@ -80,7 +80,7 @@ class VGG(utils.Base):
         lr: float = utils.lr,
         **kwargs
     ):
-        super(VGG, self).__init__(**kwargs)
+        super(VGG, self).__init__()
         self.head, self.tail = self._build_model(cfg, batch_norm)
 
         optimizer = optimizers.__dict__[optim]
@@ -88,7 +88,6 @@ class VGG(utils.Base):
         self.optim = optimizer(self.parameters(), lr=lr, **optimizer_kwargs)
         self.optim.name = optim
 
-        self.to(self.device)
         self._initialize_weights()
 
     def forward(self, x):

@@ -10,7 +10,7 @@ def lenet(optim=utils.optim, lr=utils.lr, **kwargs):
 
 class LeNet(utils.Base):
     def __init__(self, optim: str = utils.optim, lr: float = utils.lr, **kwargs):
-        super(LeNet, self).__init__(**kwargs)
+        super(LeNet, self).__init__()
         self.head, self.tail = self._build_layers()
 
         optimizer = optimizers.__dict__[optim]
@@ -18,8 +18,6 @@ class LeNet(utils.Base):
         self.optim = optimizer(self.parameters(), lr=lr, **optimizer_kwargs)
         self.optim.name = optim
 
-        self.to(self.device)
-        print(self.head[0].weight.type())
         self._initialize_weights()
 
     def forward(self, x):

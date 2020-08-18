@@ -20,12 +20,13 @@ def iterative_pruning(
     prune_global: bool = False,
     fc_rate=None,
     earlystopping: int = 0,
+    device = None
 ):
+    if device:
+        model = model.to(device)
+        print(model.head[0].weight.type())
 
     original_weights = model.state_dict()
-
-    r_rate = rate / rounds
-    r_fc_rate = fc_rate / rounds if fc_rate is not None else None
 
     for r in range(0, rounds + 1):
 
@@ -41,6 +42,8 @@ def iterative_pruning(
 
             for inputs, labels in trainloader:
 
+                if device: inputs, labels = inputs.to(device), labels.to(device)
+
                 model.optim.zero_grad()
 
                 outputs = model(inputs)
@@ -54,6 +57,8 @@ def iterative_pruning(
             losses["train"].append(train_loss)
 
             for inputs, labels in testloader:
+
+                if device: inputs, labels = inputs.to(device), labels.to(device)
 
                 outputs = model(inputs)
                 loss = model.criterion(outputs, labels)

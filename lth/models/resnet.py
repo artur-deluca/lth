@@ -37,7 +37,6 @@ class ResNet(utils.Base):
         self.optim = optimizer(self.parameters(), lr=lr, **optimizer_kwargs)
         self.optim.name = optim
 
-        self.to(self.device)
         self._initialize_weights()
 
     def forward(self, x):

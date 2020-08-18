@@ -58,15 +58,14 @@ args = parser.parse_args()
 args.dataset = args.dataset.lower()
 
 directory = str()
-device = torch.device('cuda') if args.gpu else torch.device('cpu') 
-if args.gpu: torch.backends.cuda.matmul.allow_tf32 = True 
+args.gpu = torch.device('cuda') if args.gpu else args.gpu
 
 if __name__ == "__main__":
 
     torch.manual_seed(344)
 
     model = lth.models._dispatcher[args.net](
-        optim=args.optim, lr=args.learning_rate, batch_norm=args.batch_norm, device=device
+        optim=args.optim, lr=args.learning_rate, batch_norm=args.batch_norm
     )
     datakey = [k for k in lth.data._dispatcher.keys() if args.dataset in k][0]
     train, test = lth.data._dispatcher[datakey](path.join(args.data, datakey))
@@ -86,7 +85,7 @@ if __name__ == "__main__":
             rounds=args.rounds,
             globally=args.prune_global,
             fc_rate=args.fc_rate,
-            earlystopping=args.earlystopping,
+            earlystopping=args.earlystopping
         )
 
         with open(path.join(directory, "meta.json"), "w") as f:
@@ -104,4 +103,5 @@ if __name__ == "__main__":
         args.prune_global,
         args.fc_rate,
         earlystopping=args.earlystopping,
+        device=args.gpu
     )

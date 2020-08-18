@@ -9,14 +9,9 @@ optim = 'SGD'
 
 
 class Base(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self):
         super(Base, self).__init__()
         self.criterion = nn.CrossEntropyLoss()
-
-        if 'device' in kwargs.keys():
-            self.device = kwargs['device']
-        else:
-            self.device = torch.device('cpu')
 
     def _initialize_weights(self):
         for m in self.modules():
