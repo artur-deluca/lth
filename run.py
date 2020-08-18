@@ -68,7 +68,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
 
     model = lth.models._dispatcher[args.net](
-        optim=args.optim, lr=args.learning_rate, batch_norm=args.batch_norm
+        optim=args.optim, lr=args.learn_rate, batch_norm=args.batch_norm
     )
     datakey = [k for k in lth.data._dispatcher.keys() if args.dataset in k][0]
     train, validation, test = lth.data._dispatcher[datakey](path.join(args.data, datakey))
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             rounds=args.rounds,
             globally=args.prune_global,
             fc_rate=args.fc_rate,
-            earlystopping=args.earlystopping
+            earlystopping=args.earlystop
         )
 
         with open(path.join(directory, "meta.json"), "w") as f:
