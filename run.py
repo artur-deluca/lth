@@ -106,6 +106,6 @@ if __name__ == "__main__":
         directory,
         args.prune_global,
         args.fc_rate,
-        earlystopping=args.earlystopping,
+        earlystopping=args.earlystop,
         device=args.gpu
     )
