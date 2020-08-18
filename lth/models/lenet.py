@@ -1,17 +1,25 @@
+import torch.optim as optimizers
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optimimzers
 from . import utils
 
+
 def lenet(optim=utils.optim, lr=utils.lr, **kwargs):
-    return LeNet()
+    return LeNet(optim, lr, **kwargs)
+
 
 class LeNet(utils.Base):
     def __init__(self, optim: str = utils.optim, lr: float = utils.lr, **kwargs):
-        super(LeNet, self).__init__()
+        super(LeNet, self).__init__(**kwargs)
         self.head, self.tail = self._build_layers()
-        self.optim = optimimzers.__dict__[optim](self.parameters(), lr=lr, **kwargs)
+
+        optimizer = optimizers.__dict__[optim]
+        optimizer_kwargs = utils.get_kwargs(optimizer, kwargs)
+        self.optim = optimizer(self.parameters(), lr=lr, **optimizer_kwargs)
         self.optim.name = optim
+
+        self.to(self.device)
+        print(self.head[0].weight.type())
         self._initialize_weights()
 
     def forward(self, x):

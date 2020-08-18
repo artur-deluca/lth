@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optimimzers
+import torch.optim as optimizers
 from . import utils
 
 cfgs = {
@@ -58,20 +58,37 @@ cfgs = {
 def vgg19(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("E", batch_norm, optim=optim, lr=lr, **kwargs)
 
+
 def cnn2(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("F", batch_norm, optim=optim, lr=lr, **kwargs)
 
+
 def cnn4(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("G", batch_norm, optim=optim, lr=lr, **kwargs)
+
 
 def cnn6(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("H", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
 class VGG(utils.Base):
-    def __init__(self, cfg: str, batch_norm: bool, optim: str = utils.optim, lr: float = utils.lr, **kwargs):
-        super(VGG, self).__init__()
+    def __init__(
+        self,
+        cfg: str,
+        batch_norm: bool,
+        optim: str = utils.optim,
+        lr: float = utils.lr,
+        **kwargs
+    ):
+        super(VGG, self).__init__(**kwargs)
         self.head, self.tail = self._build_model(cfg, batch_norm)
+
+        optimizer = optimizers.__dict__[optim]
+        optimizer_kwargs = utils.get_kwargs(optimizer, kwargs)
+        self.optim = optimizer(self.parameters(), lr=lr, **optimizer_kwargs)
+        self.optim.name = optim
+
+        self.to(self.device)
         self._initialize_weights()
 
     def forward(self, x):

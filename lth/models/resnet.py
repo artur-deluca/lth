@@ -1,28 +1,44 @@
-import torch.optim as optimimzers
+import torch.optim as optimizers
 import torch.nn as nn
 import torch.nn.functional as F
-from . import utils 
+from . import utils
+
 
 def resnet20(optim=utils.optim, lr=utils.lr, **kwargs):
     return ResNet(6, optim=optim, lr=lr, **kwargs)
 
+
 def resnet32(optim=utils.optim, lr=utils.lr, **kwargs):
     return ResNet(10, optim=optim, lr=lr, **kwargs)
 
+
 def resnet44(optim=utils.optim, lr=utils.lr, **kwargs):
     return ResNet(14, optim=optim, lr=lr, **kwargs)
+
 
 def resnet56(optim=utils.optim, lr=utils.lr, **kwargs):
     return ResNet(18, optim=optim, lr=lr, **kwargs)
 
 
 class ResNet(utils.Base):
-    def __init__(self, depth: int, width: int = 16, optim: str = utils.optim, lr: float = utils.lr, **kwargs):
+    def __init__(
+        self,
+        depth: int,
+        width: int = 16,
+        optim: str = utils.optim,
+        lr: float = utils.lr,
+        **kwargs
+    ):
         super(ResNet, self).__init__()
         self.head, self.body, self.tail = self._build_layers(depth, width)
-        self._initialize_weights()
-        self.optim = optimimzers.__dict__[optim](self.parameters(), lr, **kwargs)
+
+        optimizer = optimizers.__dict__[optim]
+        optimizer_kwargs = utils.get_kwargs(optimizer, kwargs)
+        self.optim = optimizer(self.parameters(), lr=lr, **optimizer_kwargs)
         self.optim.name = optim
+
+        self.to(self.device)
+        self._initialize_weights()
 
     def forward(self, x):
 

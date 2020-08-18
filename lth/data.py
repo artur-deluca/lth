@@ -15,7 +15,7 @@ def load_CIFAR10(root: str, download: bool = False, augment: bool = False, **kwa
 
     transform = transforms.Compose(_augment + _transform if augment else _transform)
 
-    batch_size = kwargs.get("batch_size", 4)
+    batch_size = kwargs.get("batch_size", 64)
     num_workers = kwargs.get("num_workers", 2)
 
     trainset = CIFAR10(root=root, train=True, download=download, transform=transform)
@@ -59,8 +59,8 @@ def build_meta(model, data, **kwargs):
 
     f = {k: v for k, v in kwargs.items()}
 
-    params = model.optim.state_dict()['param_groups'][0]
-    params = {k:v for k,v in params.items() if k is not 'params'}
+    params = model.optim.state_dict()["param_groups"][0]
+    params = {k: v for k, v in params.items() if k is not "params"}
     f.update(params)
 
     f["optimizer"] = str(model.optim.name)
@@ -68,5 +68,6 @@ def build_meta(model, data, **kwargs):
     f["batch_size"] = str(data.batch_size)
 
     return f
+
 
 _dispatcher = {"cifar10": load_CIFAR10, "mnist": load_MNIST}
