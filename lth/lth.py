@@ -28,8 +28,6 @@ def iterative_pruning(
         print(model.head[0].weight.type())
 
     original_weights = model.state_dict()
-    fc_rate = fc_rate / rounds if fc_rate not None else None
-    rate /= rounds
 
     def evaluate(dataloader, train=False):
         dataloss = 0.0
