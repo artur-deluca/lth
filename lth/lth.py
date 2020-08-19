@@ -20,7 +20,8 @@ def iterative_pruning(
     prune_global: bool = False,
     fc_rate=None,
     earlystopping: int = 0,
-    device = None
+    device = None,
+    **kwargs
 ):
     if device:
         model = model.to(device)
@@ -61,8 +62,14 @@ def iterative_pruning(
         prev_loss = 1e10
         streak = 0
         losses = {'train': list(), 'test': list(), 'validation': list()}
-        model.load_state_dict(original_weights)
 
+        placeholder = model.state_dict()
+        keys = [label for label in placeholder.keys() if not label.endswith("_mask")]
+        for k in original_weights.keys():
+            placeholder[[x for x in keys if x.startswith(k)][0]] = original_weights[k]
+
+        model.load_state_dict(placeholder)
+            
         for epoch in range(1, epochs + 1):
 
             losses["train"].append(evaluate(trainloader, train=True))
@@ -106,23 +113,28 @@ def _fetch_layers(model):
 
     loc = locals()
     params = [name for name, _ in model.named_parameters()]
-    params = [re.sub(r"(\.)([0-9]+)", r"[\2]", name) for name in params]
+    params = [re.sub(r"(\.)([0-9]+)", r"[\2]", name.split('_')[0]) for name in params]
     params = [
         (eval("model." + attr, loc), param_type)
         for (attr, _, param_type, _) in [
             re.split(r"(\.)(\w+$)", name) for name in params
         ]
     ]
+
     return params
 
 def get_sparsity(model, globally=False):
 
-    params = list(model.parameters())
+    buffers = [x for name, x in model.named_buffers() if 'mask' in name]
+    
+    try:
+        if globally:
+            return 100.0 * sum([int(torch.sum(x == 0)) for x in buffers]) / sum([x.nelement() for x in buffers])
 
-    if globally:
-        return 100.0 * sum([int(torch.sum(x == 0)) for x in params]) / sum([x.nelement() for x in params])
+        return 100.0 * (sum([int(torch.sum(x == 0)) / x.nelement() for x in buffers]) / len(buffers))
 
-    return 100.0 * (sum([int(torch.sum(x == 0)) / x.nelement() for x in params]) / len(params))
+    except ZeroDivisionError:
+        return 0
 
 def prune_net(model, rate, fc_rate=None, globally=False):
 
@@ -132,8 +144,6 @@ def prune_net(model, rate, fc_rate=None, globally=False):
         prune.global_unstructured(
             params, amount=rate, pruning_method=prune.L1Unstructured
         )
-        for (layer, param_type) in params:
-            prune.remove(layer, param_type)
         return model
 
     if str(fc_rate).isnumeric():
@@ -146,6 +156,6 @@ def prune_net(model, rate, fc_rate=None, globally=False):
 
     for (layer, param_type), rate in zip(params, rates):
         prune.l1_unstructured(layer, name=param_type, amount=rate)
-        prune.remove(layer, param_type)
 
     return model
+
