@@ -1,10 +1,12 @@
+import math
 import json
 import os
 import re
+from copy import deepcopy
+
 import torch
 import torch.nn.utils.prune as prune
 from torch import nn
-from copy import deepcopy
 
 
 def iterative_pruning(
@@ -12,7 +14,7 @@ def iterative_pruning(
     trainloader,
     validloader,
     testloader,
-    epochs: int,
+    iterations: int,
     rounds: int,
     rate: float,
     verbose: bool = False,
@@ -69,6 +71,7 @@ def iterative_pruning(
             placeholder[[x for x in keys if x.startswith(k)][0]] = original_weights[k]
 
         model.load_state_dict(placeholder)
+        epochs = math.ceil(iterations / len(trainloader))
             
         for epoch in range(1, epochs + 1):
 

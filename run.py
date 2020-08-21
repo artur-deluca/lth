@@ -4,6 +4,7 @@ import torch
 from datetime import datetime
 from os import path, makedirs
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
+from lth.models.utils import lr, optim
 
 
 parser = ArgumentParser(
@@ -20,11 +21,11 @@ parser.add_argument(
     "-p", "--data", metavar='', default="./datasets/", type=str, help="Path to root dataset folder"
 )
 parser.add_argument("-bs", "--batch_size", metavar='', default=60, type=int, help="Dataloader's batch size")
-parser.add_argument("-o", "--optim", metavar='', default="SGD", type=str, help="Model's optimizer")
+parser.add_argument("-o", "--optim", metavar='', default=optim, type=str, help="Model's optimizer")
 parser.add_argument(
-    "-lr", "--learn_rate", metavar='', default=0.005, type=float, help="Learning rate"
+    "-lr", "--learn_rate", metavar='', default=lr, type=float, help="Learning rate"
 )
-parser.add_argument("-e", "--epochs", metavar='', default=100, type=int, help="Training epochs")
+parser.add_argument("-i", "--iter", metavar='', default=int(60e3), type=int, help="Training epochs")
 parser.add_argument("-r", "--rounds", metavar='', default=15, type=int, help="Prunning rounds")
 parser.add_argument(
     "-pr", "--prune_rate", metavar='', default=0.2, type=float, help="Prunning rate 0-.99"
