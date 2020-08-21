@@ -4,6 +4,7 @@ import re
 import torch
 import torch.nn.utils.prune as prune
 from torch import nn
+from copy import deepcopy
 
 tol = 0.01
 
@@ -27,11 +28,11 @@ def iterative_pruning(
         model = model.to(device)
         print(model.head[0].weight.type())
 
-    original_weights = model.state_dict()
+    original_weights = deepcopy(model.state_dict())
 
-    def evaluate(dataloader, train=False):
+    def evaluate(dataloader, trainable=False):
         dataloss = 0.0
-        if train:
+        if trainable:
             for inputs, labels in dataloader:
 
                 if device: inputs, labels = inputs.to(device), labels.to(device)
@@ -50,20 +51,22 @@ def iterative_pruning(
 
                 if device: inputs, labels = inputs.to(device), labels.to(device)
 
-                outputs = model(inputs)
-                loss = model.criterion(outputs, labels)
-                dataloss += loss.item()
+                with torch.no_grad():
 
-        return dataloss / dataloader.batch_size
+                    outputs = model(inputs)
+                    loss = model.criterion(outputs, labels)
+                    dataloss += loss.item()
+
+        return dataloss / len(dataloader)
 
 
     for r in range(0, rounds + 1):
 
         prev_loss = 1e10
         streak = 0
-        losses = {'train': list(), 'test': list(), 'validation': list()}
+        losses = {'train': list(), 'test': list(), 'validation': list(), 'sparsity': 0}
 
-        placeholder = model.state_dict()
+        placeholder = deepcopy(model.state_dict())
         keys = [label for label in placeholder.keys() if not label.endswith("_mask")]
         for k in original_weights.keys():
             placeholder[[x for x in keys if x.startswith(k)][0]] = original_weights[k]
@@ -72,13 +75,13 @@ def iterative_pruning(
             
         for epoch in range(1, epochs + 1):
 
-            losses["train"].append(evaluate(trainloader, train=True))
-            losses["validation"].append(evaluate(validloader, train=False))
-            losses["test"].append(evaluate(testloader, train=False))
+            losses["train"].append(evaluate(trainloader, trainable=True))
+            losses["validation"].append(evaluate(validloader, trainable=False))
+            losses["test"].append(evaluate(testloader, trainable=False))
 
-            sparsity = get_sparsity(model, prune_global)
+            losses['sparsity'] = sparsity(model, prune_global)
             print(
-                    f"[round: {r} | epoch: {epoch}] train: {losses['train'][-1]:.3f} validation: {losses['validation'][-1]:.3f} | sparsity: {sparsity:.0f}"
+                    f"[round: {r} | epoch: {epoch}] train: {losses['train'][-1]:.3f} validation: {losses['validation'][-1]:.3f} | sparsity: {losses['sparsity']:.0f}%"
             ) if verbose else None
 
             if earlystopping:
@@ -105,7 +108,9 @@ def iterative_pruning(
 
 def write_data(model, losses, directory):
     os.makedirs(directory, exist_ok=True)
-    torch.save(model.state_dict(), os.path.join(directory, "weights"))
+    state = dict(model.named_parameters())
+    state.update(dict(model.named_buffers()))
+    torch.save(state, os.path.join(directory, "weights"))
     with open(os.path.join(directory, "loss.json"), "w") as f:
         json.dump(losses, f)
 
@@ -123,21 +128,17 @@ def _fetch_layers(model):
 
     return params
 
-def get_sparsity(model, globally=False):
+def sparsity(model, globally=False):
 
-    buffers = [x for name, x in model.named_buffers() if 'mask' in name]
-    
-    try:
-        if globally:
-            return 100.0 * sum([int(torch.sum(x == 0)) for x in buffers]) / sum([x.nelement() for x in buffers])
+    params = [getattr(layer, name) for layer, name in _fetch_layers(model)]
+    if globally:
+        return 100.0 * sum([int(torch.sum(x == 0)) for x in params]) / sum([x.nelement() for x in params])
 
-        return 100.0 * (sum([int(torch.sum(x == 0)) / x.nelement() for x in buffers]) / len(buffers))
+    return 100.0 * (sum([int(torch.sum(x == 0)) / x.nelement() for x in params]) / len(params))
 
-    except ZeroDivisionError:
-        return 0
 
 def prune_net(model, rate, fc_rate=None, globally=False):
-
+    
     params = _fetch_layers(model)
 
     if globally:
