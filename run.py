@@ -89,6 +89,7 @@ if __name__ == "__main__":
             globally=args.prune_global,
             fc_rate=args.fc_rate,
             gpu=args.gpu,
+            seed=str(args.seed)
         )
 
         with open(path.join(directory, "meta.json"), "w") as f:
