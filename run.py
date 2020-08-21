@@ -37,7 +37,7 @@ parser.add_argument(
     "--fc_rate",
     metavar='',
     default=None,
-    type=int,
+    type=float,
     help="Different prunning rate for Fully Connected layers",
 )
 parser.add_argument(
@@ -84,7 +84,7 @@ if __name__ == "__main__":
             model,
             train,
             net=net,
-            epochs=args.epochs,
+            iterations=args.iter,
             prune_rate=args.prune_rate,
             rounds=args.rounds,
             globally=args.prune_global,
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         train,
         validation,
         test,
-        args.epochs,
+        args.iter,
         args.rounds,
         args.prune_rate,
         args.verbose,
