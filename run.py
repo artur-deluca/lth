@@ -89,7 +89,7 @@ if __name__ == "__main__":
             rounds=args.rounds,
             globally=args.prune_global,
             fc_rate=args.fc_rate,
-            gpu=args.gpu,
+            gpu=str(args.gpu),
             seed=str(args.seed)
         )
 
