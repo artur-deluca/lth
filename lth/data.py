@@ -46,7 +46,7 @@ def load_MNIST(root: str, download: bool = False, validation = 5000, **kwargs):
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize(mean=[0.1307], std=[0.3081])]
     )
-    batch_size = kwargs.get("batch_size", 64)
+    batch_size = kwargs.get("batch_size", 60)
 
     trainset = MNIST(root=root, train=True, download=download, transform=transform)
     trainset, validset = _validation_split(trainset, validation)

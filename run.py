@@ -19,6 +19,7 @@ parser.add_argument("dataset", type=str, help="Dataset type (MNIST or CIFAR10)")
 parser.add_argument(
     "-p", "--data", metavar='', default="./datasets/", type=str, help="Path to root dataset folder"
 )
+parser.add_argument("-bs", "--batch_size", metavar='', default=60, type=int, help="Dataloader's batch size")
 parser.add_argument("-o", "--optim", metavar='', default="SGD", type=str, help="Model's optimizer")
 parser.add_argument(
     "-lr", "--learn_rate", metavar='', default=0.005, type=float, help="Learning rate"
@@ -28,11 +29,8 @@ parser.add_argument("-r", "--rounds", metavar='', default=15, type=int, help="Pr
 parser.add_argument(
     "-pr", "--prune_rate", metavar='', default=0.2, type=float, help="Prunning rate 0-.99"
 )
-parser.add_argument(
-    "-es", "--earlystop", metavar='', default=0, type=int, help="Early stopping epochs"
-)
 parser.add_argument("-s", "--save", metavar='', default="./experiments/", type=str, help="Directory to store the experiments")
-parser.add_argument("-rs", "--seed", metavar='', default=344, type=int, help="Random seed")
+parser.add_argument("-rs", "--seed", metavar='', default=None, type=int, help="Random seed")
 parser.add_argument(
     "-fc",
     "--fc_rate",
@@ -65,13 +63,15 @@ args.gpu = torch.device('cuda') if args.gpu else args.gpu
 
 if __name__ == "__main__":
 
-    torch.manual_seed(args.seed)
+    if str(args.seed).isnumeric():
+        torch.manual_seed(args.seed)
+
 
     model = lth.models._dispatcher[args.net](
         optim=args.optim, lr=args.learn_rate, batch_norm=args.batch_norm
     )
     datakey = [k for k in lth.data._dispatcher.keys() if args.dataset in k][0]
-    train, validation, test = lth.data._dispatcher[datakey](path.join(args.data, datakey))
+    train, validation, test = lth.data._dispatcher[datakey](path.join(args.data, datakey), batch_size=args.batch_size)
 
     if args.save:
         net = args.net + f'{"_bn_" if args.batch_norm else ""}'
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             rounds=args.rounds,
             globally=args.prune_global,
             fc_rate=args.fc_rate,
-            earlystopping=args.earlystop
+            gpu=args.gpu,
         )
 
         with open(path.join(directory, "meta.json"), "w") as f:
@@ -106,6 +106,5 @@ if __name__ == "__main__":
         directory,
         args.prune_global,
         args.fc_rate,
-        earlystopping=args.earlystop,
         device=args.gpu
     )

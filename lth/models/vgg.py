@@ -59,15 +59,15 @@ def vgg19(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("E", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def cnn2(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
+def conv2(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("F", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def cnn4(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
+def conv4(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("G", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def cnn6(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
+def conv6(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
     return VGG("H", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
@@ -117,6 +117,6 @@ class VGG(utils.Base):
         if cfg[-1] == "A":
             tail = [nn.Linear(512, 10)]
         else:
-            tail = [nn.Linear(512, 256), nn.Linear(256, 256), nn.Linear(256, 10)]
+            tail = [nn.Linear(16384, 256), nn.Linear(256, 256), nn.Linear(256, 10)]
 
         return nn.Sequential(*head), nn.Sequential(*tail)

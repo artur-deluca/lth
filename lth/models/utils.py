@@ -4,9 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-lr = 0.001
-optim = 'SGD'
-
+lr = 1.2e-3
+optim = 'Adam'
 
 class Base(nn.Module):
     def __init__(self):

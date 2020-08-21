@@ -6,7 +6,6 @@ import torch.nn.utils.prune as prune
 from torch import nn
 from copy import deepcopy
 
-tol = 0.01
 
 def iterative_pruning(
     model,
@@ -20,15 +19,14 @@ def iterative_pruning(
     save: bool = False,
     prune_global: bool = False,
     fc_rate=None,
-    earlystopping: int = 0,
     device = None,
     **kwargs
 ):
     if device:
         model = model.to(device)
-        print(model.head[0].weight.type())
 
     original_weights = deepcopy(model.state_dict())
+    best_model = dict()
 
     def evaluate(dataloader, trainable=False):
         dataloss = 0.0
@@ -62,9 +60,8 @@ def iterative_pruning(
 
     for r in range(0, rounds + 1):
 
-        prev_loss = 1e10
-        streak = 0
-        losses = {'train': list(), 'test': list(), 'validation': list(), 'sparsity': 0}
+        min_loss = 1e10
+        summary = {'train': list(), 'validation': list(), 'sparsity': 0}
 
         placeholder = deepcopy(model.state_dict())
         keys = [label for label in placeholder.keys() if not label.endswith("_mask")]
@@ -75,30 +72,28 @@ def iterative_pruning(
             
         for epoch in range(1, epochs + 1):
 
-            losses["train"].append(evaluate(trainloader, trainable=True))
-            losses["validation"].append(evaluate(validloader, trainable=False))
-            losses["test"].append(evaluate(testloader, trainable=False))
+            summary["train"].append(evaluate(trainloader, trainable=True))
+            summary["validation"].append(evaluate(validloader, trainable=False))
+            summary['sparsity'] = sparsity(model, prune_global)
 
-            losses['sparsity'] = sparsity(model, prune_global)
-            print(
-                    f"[round: {r} | epoch: {epoch}] train: {losses['train'][-1]:.3f} validation: {losses['validation'][-1]:.3f} | sparsity: {losses['sparsity']:.0f}%"
-            ) if verbose else None
+            if verbose:
+                message = f"[round: {r} | epoch: {epoch}] "
+                message += f"train: {summary['train'][-1]:.3f} validation: {summary['validation'][-1]:.3f} "
+                message += f"| sparsity: {summary['sparsity']:.0f}%"
+                print(message)
 
-            if earlystopping:
-                if abs(losses['validation'][-1] - prev_loss) / prev_loss < tol:
-                    streak += 1
-                else:
-                    streak = 0
-
-                if streak >= earlystopping:
-                    print("Early stopping...")
-                    break
-
-            prev_loss = losses['validation'][-1] 
+            if summary['validation'][-1] < min_loss:
+                min_loss = summary['validation'][-1]
+                best_model = deepcopy(dict(model.named_parameters()))
+                best_model.update(deepcopy(dict(model.named_buffers())))
+        
+        model.load_state_dict(best_model)
+        summary['best_iteration'] = summary['validation'].index(min_loss)
+        summary['test_error'] = evaluate(testloader, trainable=False)
 
         if save:
             directory = os.path.join(save, str(r))
-            write_data(model, losses, directory)
+            write_data(best_model, summary, directory)
 
         if r != rounds + 1:
             model = prune_net(model, rate, fc_rate, prune_global)
@@ -106,13 +101,12 @@ def iterative_pruning(
     print("Finished Training")
 
 
-def write_data(model, losses, directory):
+def write_data(state, summary, directory):
+
     os.makedirs(directory, exist_ok=True)
-    state = dict(model.named_parameters())
-    state.update(dict(model.named_buffers()))
     torch.save(state, os.path.join(directory, "weights"))
     with open(os.path.join(directory, "loss.json"), "w") as f:
-        json.dump(losses, f)
+        json.dump(summary, f)
 
 def _fetch_layers(model):
 
@@ -142,6 +136,7 @@ def prune_net(model, rate, fc_rate=None, globally=False):
     params = _fetch_layers(model)
 
     if globally:
+        params = [(layer, name) for layer, name in params if not isinstance(layer, nn.Linear)]
         prune.global_unstructured(
             params, amount=rate, pruning_method=prune.L1Unstructured
         )
