@@ -117,6 +117,7 @@ class VGG(utils.Base):
         if cfg[-1] == "A":
             tail = [nn.Linear(512, 10)]
         else:
-            tail = [nn.Linear(16384, 256), nn.Linear(256, 256), nn.Linear(256, 10)]
+            x = int(64 * 64 * 256/ cfg[-2])
+            tail = [nn.Linear(x, 256), nn.Linear(256, 256), nn.Linear(256, 10)]
 
         return nn.Sequential(*head), nn.Sequential(*tail)
