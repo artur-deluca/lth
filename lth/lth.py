@@ -1,3 +1,4 @@
+import sys
 import math
 import json
 import os
@@ -7,8 +8,10 @@ from copy import deepcopy
 import torch
 import torch.nn.utils.prune as prune
 from torch import nn
+from loguru import logger
 
 
+@logger.catch
 def iterative_pruning(
     model,
     trainloader,
@@ -29,6 +32,7 @@ def iterative_pruning(
 
     original_weights = deepcopy(model.state_dict())
     best_model = dict()
+    set_logger()
 
     def evaluate(dataloader, trainable=False):
         dataloss = 0.0
@@ -79,11 +83,10 @@ def iterative_pruning(
             summary["validation"].append(evaluate(validloader, trainable=False))
             summary['sparsity'] = sparsity(model, prune_global)
 
-            if verbose:
-                message = f"[round: {r} | epoch: {epoch}] "
-                message += f"train: {summary['train'][-1]:.3f} validation: {summary['validation'][-1]:.3f} "
-                message += f"| sparsity: {summary['sparsity']:.0f}%"
-                print(message)
+            message = f"[round: {r} | epoch: {epoch}] "
+            message += f"train: {summary['train'][-1]:.3f} validation: {summary['validation'][-1]:.3f} "
+            message += f"| sparsity: {summary['sparsity']:.0f}%"
+            logger.info(message)
 
             if summary['validation'][-1] < min_loss:
                 min_loss = summary['validation'][-1]
@@ -101,7 +104,15 @@ def iterative_pruning(
         if r != rounds + 1:
             model = prune_net(model, rate, fc_rate, prune_global)
 
-    print("Finished Training")
+    logger.success("Finished Training")
+
+def set_logger():
+    logger.remove()
+    message_format = '<level>{level: <8}</level> {message}'
+    if os.getenv('verbose'):
+        logger.add(sys.stderr, level=os.getenv('verbose'), format=message_format)
+    else:
+        logger.add(sys.stderr, level='WARNING', format=message_format)
 
 
 def write_data(state, summary, directory):

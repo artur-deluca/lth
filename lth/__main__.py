@@ -1,11 +1,16 @@
+import os
+import sys
 import json
-import lth
-import torch
 from datetime import datetime
-from os import path, makedirs
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from lth.models.utils import lr, optim
 
+import torch
+from loguru import logger
+
+import data
+import models
+import lth
+from models.utils import lr, optim
 
 parser = ArgumentParser(
     description="Run experiments with Iterative Prunning, identifying Lottery Tickets",
@@ -49,64 +54,63 @@ parser.add_argument(
 parser.add_argument(
     "--gpu", action="store_true", help="Allow for GPU usage"
 )
-parser.add_argument("--verbose", action="store_true", help="Verbosity mode")
+parser.add_argument("--quiet", action="store_true", help="Verbosity mode")
 
 parser.set_defaults(batch_norm=False)
 parser.set_defaults(prune_global=False)
-parser.set_defaults(verbose=False)
+parser.set_defaults(quiet=False)
 parser.set_defaults(gpu=False)
 
 args = parser.parse_args()
 args.dataset = args.dataset.lower()
 
 directory = str()
-args.gpu = torch.device('cuda') if args.gpu else args.gpu
 
-if __name__ == "__main__":
+if args.gpu: os.environ['gpu'] = torch.device('cuda')
+if not args.quiet:
+    os.environ['verbose'] = 'INFO'
 
-    if str(args.seed).isnumeric():
-        torch.manual_seed(args.seed)
+if str(args.seed).isnumeric():
+    torch.manual_seed(args.seed)
 
+model = models._dispatcher[args.net](
+    optim=args.optim, lr=args.learn_rate, batch_norm=args.batch_norm
+)
+datakey = [k for k in data._dispatcher.keys() if args.dataset in k][0]
+train, validation, test = data._dispatcher[datakey](os.path.join(args.data, datakey), batch_size=args.batch_size)
 
-    model = lth.models._dispatcher[args.net](
-        optim=args.optim, lr=args.learn_rate, batch_norm=args.batch_norm
-    )
-    datakey = [k for k in lth.data._dispatcher.keys() if args.dataset in k][0]
-    train, validation, test = lth.data._dispatcher[datakey](path.join(args.data, datakey), batch_size=args.batch_size)
+if args.save:
+    net = args.net + f'{"_bn_" if args.batch_norm else ""}'
+    f = f'{datetime.now().strftime("%m_%d_%Y_%I_%M")}_{net}_{args.dataset}'
+    directory = os.path.join(args.save, f)
+    os.makedirs(directory, exist_ok=True)
 
-    if args.save:
-        net = args.net + f'{"_bn_" if args.batch_norm else ""}'
-        f = f'{datetime.now().strftime("%m_%d_%Y_%I_%M")}_{net}_{args.dataset}'
-        directory = path.join(args.save, f)
-        makedirs(directory, exist_ok=True)
-
-        meta = lth.build_meta(
-            model,
-            train,
-            net=net,
-            iterations=args.iter,
-            prune_rate=args.prune_rate,
-            rounds=args.rounds,
-            globally=args.prune_global,
-            fc_rate=args.fc_rate,
-            gpu=str(args.gpu),
-            seed=str(args.seed)
-        )
-
-        with open(path.join(directory, "meta.json"), "w") as f:
-            json.dump(meta, f)
-
-    lth.iterative_pruning(
+    meta = data.build_meta(
         model,
         train,
-        validation,
-        test,
-        args.iter,
-        args.rounds,
-        args.prune_rate,
-        args.verbose,
-        directory,
-        args.prune_global,
-        args.fc_rate,
-        device=args.gpu
+        net=net,
+        iterations=args.iter,
+        prune_rate=args.prune_rate,
+        rounds=args.rounds,
+        globally=args.prune_global,
+        fc_rate=args.fc_rate,
+        gpu=str(args.gpu),
+        seed=str(args.seed)
     )
+
+    with open(os.path.join(directory, "meta.json"), "w") as f:
+        json.dump(meta, f)
+
+lth.iterative_pruning(
+    model,
+    train,
+    validation,
+    test,
+    args.iter,
+    args.rounds,
+    args.prune_rate,
+    directory,
+    args.prune_global,
+    args.fc_rate,
+    device=args.gpu
+)
