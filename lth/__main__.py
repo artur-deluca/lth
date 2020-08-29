@@ -69,7 +69,7 @@ if args.gpu: os.environ['device'] = 'cuda'
 if args.quiet: os.environ['verbose'] = 'WARNING'
 
 if str(args.seed).isnumeric():
-    os.environ['seed'] = int(args.seed)
+    os.environ['seed'] = str(args.seed)
     torch.manual_seed(int(args.seed))
 
 model = models._dispatcher[args.net](

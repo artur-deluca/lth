@@ -54,7 +54,9 @@ def _get_save_dir(model, dataset, random):
 
 
 def _get_seed():
-    return os.getenv('seed')
+    if os.getenv('seed'):
+        return int(os.getenv('seed'))
+    return None
 
 
 def build_meta(model, data, **kwargs):
