@@ -28,7 +28,7 @@ def iterative_pruning(
     **kwargs
 ):
 
-    save = utils._get_save_dir(model._get_name(), str(data.train.dataset.dataset))
+    save = utils._get_save_dir(model._get_name(), str(data.train.dataset.dataset), random)
     logger.debug(f'save path: {save}')
 
     device = utils._get_device()

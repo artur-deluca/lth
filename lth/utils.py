@@ -32,7 +32,7 @@ def _get_device():
     return device
 
 
-def _get_save_dir(model, dataset):
+def _get_save_dir(model, dataset, random):
 
     save = os.getenv('save_dir')
     dataset = dataset.split('\n')[0].strip('Dataset ')
@@ -42,6 +42,9 @@ def _get_save_dir(model, dataset):
 
     if save:
         f = f'{datetime.now().strftime("%m_%d_%Y_%I_%M")}_{model}_{dataset}'
+        if random:
+            f += '_random'
+
         save = os.path.join(save, f)
         os.makedirs(save, exist_ok=True)
     else:
