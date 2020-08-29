@@ -4,12 +4,12 @@ import torch.nn.functional as F
 from . import utils
 
 
-def lenet(optim=utils.optim, lr=utils.lr, **kwargs):
+def lenet(optim='Adam', lr=1.2e-3, **kwargs):
     return LeNet(optim, lr, **kwargs)
 
 
 class LeNet(utils.Base):
-    def __init__(self, optim: str = utils.optim, lr: float = utils.lr, **kwargs):
+    def __init__(self, optim: str, lr: float, **kwargs):
         super(LeNet, self).__init__()
         self.head, self.tail = self._build_layers()
 

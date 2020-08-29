@@ -1,43 +1,86 @@
-import sys
 import math
-import json
 import os
-import re
+import json
 from copy import deepcopy
+from collections import namedtuple
 
 import torch
 import torch.nn.utils.prune as prune
 from torch import nn
 from loguru import logger
 
+try:
+    import utils
+except ImportError:
+    from . import utils
 
+@utils._set_logger
 @logger.catch
 def iterative_pruning(
     model,
-    trainloader,
-    validloader,
-    testloader,
+    data,
     iterations: int,
     rounds: int,
     rate: float,
-    verbose: bool = False,
-    save: bool = False,
     prune_global: bool = False,
     fc_rate=None,
-    device = None,
+    random=False,
     **kwargs
 ):
-    if device:
-        model = model.to(device)
 
-    original_weights = deepcopy(model.state_dict())
-    best_model = dict()
-    set_logger()
+    save = utils._get_save_dir(model._get_name(), str(data.train.dataset.dataset))
+    logger.debug(f'save path: {save}')
 
-    def evaluate(dataloader, trainable=False):
-        dataloss = 0.0
-        if trainable:
-            for inputs, labels in dataloader:
+    device = utils._get_device()
+    if device: model = model.to(device)
+    
+    meta = utils.build_meta(model, data, iterations=iterations, rounds=rounds, rate=rate, prune_global=prune_global, fc_rate=fc_rate)
+    if random:
+        original_weights = deepcopy(model)
+        original_weights._initialize_weights()
+        original_weights = deepcopy(original_weights.state_dict())
+    else:
+        original_weights = deepcopy(model.state_dict())
+
+    def evaluate(dataloader):
+        dataloss, correct = 0.0, 0.0
+        for inputs, labels in dataloader:
+
+            if device: inputs, labels = inputs.to(device), labels.to(device)
+
+            with torch.no_grad():
+
+                outputs = model(inputs)
+                loss = model.criterion(outputs, labels)
+                dataloss += loss.item()
+
+            predictions = torch.argmax(outputs, dim=1)
+            correct += (predictions == labels).float().sum()
+
+        accuracy = (correct / (len(dataloader) * dataloader.batch_size)).item()
+        loss = dataloss / len(dataloader)
+
+        return loss, accuracy
+
+    for r in range(0, rounds + 1):
+
+        min_loss = 1e10
+
+        placeholder = deepcopy(model.state_dict())
+        keys = [label for label in placeholder.keys() if not label.endswith("_mask")]
+        for k in original_weights.keys():
+            placeholder[[x for x in keys if x.startswith(k)][0]] = original_weights[k]
+
+        model.load_state_dict(placeholder)
+        
+        i = 0 
+
+        template = namedtuple('checkpoint', 'train_loss, sparsity, valid_loss, valid_acc, test_loss, test_acc')
+        cp = template(train_loss=list(), sparsity=0.0, valid_loss=list(), valid_acc=list(), test_loss=list(), test_acc=list()) # checkpoint
+        best_model = dict()
+
+        while i < iterations:
+            for inputs, labels in data.train:
 
                 if device: inputs, labels = inputs.to(device), labels.to(device)
 
@@ -47,107 +90,71 @@ def iterative_pruning(
                 loss = model.criterion(outputs, labels)
                 loss.backward()
                 model.optim.step()
+                cp.train_loss.append(loss.item())
 
-                dataloss += loss.item()
-        else:
+                if data.test:
 
-            for inputs, labels in dataloader:
+                    test_loss, test_acc = evaluate(data.test)
+                    cp.test_loss.append(test_loss)
+                    cp.test_acc.append(test_acc)
 
-                if device: inputs, labels = inputs.to(device), labels.to(device)
+                if data.validation:
 
-                with torch.no_grad():
+                    valid_loss, valid_acc = evaluate(data.validation)
+                    cp.valid_loss.append(valid_loss)
+                    cp.valid_acc.append(valid_acc)
 
-                    outputs = model(inputs)
-                    loss = model.criterion(outputs, labels)
-                    dataloss += loss.item()
+                    if valid_loss < min_loss:
+                        best_iter = i
+                        min_loss = valid_loss
+                        best_model = deepcopy(dict(model.named_parameters()))
+                        best_model.update(deepcopy(dict(model.named_buffers())))
+                        best_test_loss = test_loss if data.test else None
 
-        return dataloss / len(dataloader)
+                if (i + 1) % len(data.train) == 0:
 
+                    epoch = (i + 1) // len(data.train)
+                    loss = sum(cp.train_loss) / len(data.train)
+                    
+                    message = f'[round: {r} | epoch: {epoch}] '
+                    message += f'train: {loss:.3f} '
+                    if data.validation: message += f'validation: {cp.valid_loss[-1]:.4f} '
+                    message += f'| sparsity: {cp.sparsity:.0f}%'
 
-    for r in range(0, rounds + 1):
+                    logger.info(message)
+                    
+                    if save:
+                        cp = cp._replace(sparsity=[cp.sparsity for _ in cp.train_loss])
+                        utils.write_epoch(cp, os.path.join(save, str(r)))
 
-        min_loss = 1e10
-        summary = {'train': list(), 'validation': list(), 'sparsity': 0}
+                    cp = template(train_loss=list(), sparsity=0.0, valid_loss=list(), valid_acc=list(), test_loss=list(), test_acc=list()) # checkpoint
 
-        placeholder = deepcopy(model.state_dict())
-        keys = [label for label in placeholder.keys() if not label.endswith("_mask")]
-        for k in original_weights.keys():
-            placeholder[[x for x in keys if x.startswith(k)][0]] = original_weights[k]
-
-        model.load_state_dict(placeholder)
-        epochs = math.ceil(iterations / len(trainloader))
-            
-        for epoch in range(1, epochs + 1):
-
-            summary["train"].append(evaluate(trainloader, trainable=True))
-            summary["validation"].append(evaluate(validloader, trainable=False))
-            summary['sparsity'] = sparsity(model, prune_global)
-
-            message = f"[round: {r} | epoch: {epoch}] "
-            message += f"train: {summary['train'][-1]:.3f} validation: {summary['validation'][-1]:.3f} "
-            message += f"| sparsity: {summary['sparsity']:.0f}%"
-            logger.info(message)
-
-            if summary['validation'][-1] < min_loss:
-                min_loss = summary['validation'][-1]
-                best_model = deepcopy(dict(model.named_parameters()))
-                best_model.update(deepcopy(dict(model.named_buffers())))
+                i += 1
         
         model.load_state_dict(best_model)
-        summary['best_iteration'] = summary['validation'].index(min_loss)
-        summary['test_error'] = evaluate(testloader, trainable=False)
 
-        if save:
-            directory = os.path.join(save, str(r))
-            write_data(best_model, summary, directory)
+        if data.validation:
+            meta['round_best_iteration'].append(best_iter)
+            if data.test:
+                meta['round_test_error'].append(best_test_loss)
 
-        if r != rounds + 1:
+            if save:
+                torch.save(best_model, os.path.join(save, f'{r}/weights.pth'))
+                with open(os.path.join(save, 'meta.json'), 'w') as f:
+                    json.dump(meta, f)
+
+        if r < rounds:
             model = prune_net(model, rate, fc_rate, prune_global)
+            cp = cp._replace(sparsity=utils.sparsity(model, prune_global))
 
-    logger.success("Finished Training")
+    logger.success('Finished pruning')
 
-def set_logger():
-    logger.remove()
-    message_format = '<level>{level: <8}</level> {message}'
-    if os.getenv('verbose'):
-        logger.add(sys.stderr, level=os.getenv('verbose'), format=message_format)
-    else:
-        logger.add(sys.stderr, level='WARNING', format=message_format)
-
-
-def write_data(state, summary, directory):
-
-    os.makedirs(directory, exist_ok=True)
-    torch.save(state, os.path.join(directory, "weights"))
-    with open(os.path.join(directory, "loss.json"), "w") as f:
-        json.dump(summary, f)
-
-def _fetch_layers(model):
-
-    loc = locals()
-    params = [name for name, _ in model.named_parameters()]
-    params = [re.sub(r"(\.)([0-9]+)", r"[\2]", name.split('_')[0]) for name in params]
-    params = [
-        (eval("model." + attr, loc), param_type)
-        for (attr, _, param_type, _) in [
-            re.split(r"(\.)(\w+$)", name) for name in params
-        ]
-    ]
-
-    return params
-
-def sparsity(model, globally=False):
-
-    params = [getattr(layer, name) for layer, name in _fetch_layers(model)]
-    if globally:
-        return 100.0 * sum([int(torch.sum(x == 0)) for x in params]) / sum([x.nelement() for x in params])
-
-    return 100.0 * (sum([int(torch.sum(x == 0)) / x.nelement() for x in params]) / len(params))
+    return model
 
 
 def prune_net(model, rate, fc_rate=None, globally=False):
     
-    params = _fetch_layers(model)
+    params = utils._fetch_layers(model)
 
     if globally:
         params = [(layer, name) for layer, name in params if not isinstance(layer, nn.Linear)]

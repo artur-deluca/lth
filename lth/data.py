@@ -1,8 +1,11 @@
+from collections import namedtuple
+
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import CIFAR10, MNIST
 
+_dataloader = namedtuple('dataloader', ['train', 'validation', 'test'])
 
 def load_CIFAR10(root: str, download: bool = False, augment: bool = False, validation = 5000, **kwargs):
 
@@ -38,7 +41,8 @@ def load_CIFAR10(root: str, download: bool = False, augment: bool = False, valid
     testloader = DataLoader(
         testset, batch_size=batch_size, shuffle=False,
     ) 
-    return trainloader, validloader, testloader
+
+    return _dataloader(train=trainloader, validation=validloader, test=testloader)
 
 
 def load_MNIST(root: str, download: bool = False, validation = 5000, **kwargs):
@@ -65,7 +69,7 @@ def load_MNIST(root: str, download: bool = False, validation = 5000, **kwargs):
         testset, batch_size=batch_size, shuffle=False
     )
 
-    return trainloader, validloader, testloader
+    return _dataloader(train=trainloader, validation=validloader, test=testloader)
 
 
 def _validation_split(dataloader, validation_size):
@@ -76,21 +80,6 @@ def _validation_split(dataloader, validation_size):
 
     train, validation = random_split(dataloader, [len(dataloader) - split_size, split_size])
     return train, validation
-
-
-def build_meta(model, data, **kwargs):
-
-    f = {k: v for k, v in kwargs.items()}
-
-    params = model.optim.state_dict()["param_groups"][0]
-    params = {k: v for k, v in params.items() if k is not "params"}
-    f.update(params)
-
-    f["optimizer"] = str(model.optim.name)
-    f["dataset"] = str(data.dataset)
-    f["batch_size"] = str(data.batch_size)
-
-    return f
 
 
 _dispatcher = {"cifar10": load_CIFAR10, "mnist": load_MNIST}
