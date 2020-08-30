@@ -33,7 +33,7 @@ def iterative_pruning(
 
     device = utils._get_device()
     if device: model = model.to(device)
-    print(model.head[0].weight.type())
+    print(next(model.parameters()).is_cuda)
     
     meta = utils.build_meta(model, data, iterations=iterations, rounds=rounds, rate=rate, prune_global=prune_global, fc_rate=fc_rate)
     if random:
