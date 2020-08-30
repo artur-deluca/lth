@@ -31,6 +31,7 @@ def _get_device():
             device = torch.device(os.getenv('device'))
             torch.backends.cudnn.benchmark = True
 
+    print(device)
     return device
 
 
