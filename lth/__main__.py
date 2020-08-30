@@ -65,7 +65,7 @@ parser.set_defaults(gpu=False)
 
 args = parser.parse_args()
 
-if args.gpu: os.environ['device'] = 'cuda'
+if args.gpu: os.environ['device'] = 'cuda:0'
 if args.quiet: os.environ['verbose'] = 'WARNING'
 
 if str(args.seed).isnumeric():
