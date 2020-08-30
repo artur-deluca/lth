@@ -30,7 +30,7 @@ parser.add_argument(
     "-lr", "--learn_rate", metavar='', default=lr, type=float, help="Learning rate"
 )
 parser.add_argument("-i", "--iter", metavar='', default=int(60e3), type=int, help="Training epochs")
-parser.add_argument("-r", "--rounds", metavar='', default=15, type=int, help="Prunning rounds")
+parser.add_argument("-r", "--rounds", metavar='', default=26, type=int, help="Prunning rounds")
 parser.add_argument(
     "-pr", "--prune_rate", metavar='', default=0.2, type=float, help="Prunning rate 0-.99"
 )

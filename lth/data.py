@@ -17,8 +17,9 @@ def load_CIFAR10(root: str, download: bool = False, augment: bool = False, valid
     _augment = [transforms.RandomHorizontalFlip(), transforms.RandomCrop(32, 4)]
 
     transform = transforms.Compose(_augment + _transform if augment else _transform)
-
-    batch_size = kwargs.get("batch_size", 128)
+    train_batch_size = kwargs.get("batch_size", 128)
+    valid_batch_size = kwargs.get("validation_batch_size", train_batch_size)
+    test_batch_size = kwargs.get("test_batch_size", train_batch_size)
 
     trainset = CIFAR10(root=root, train=True, download=download, transform=transform)
     trainset, validset = _validation_split(trainset, validation)
@@ -31,16 +32,16 @@ def load_CIFAR10(root: str, download: bool = False, augment: bool = False, valid
     )
 
     trainloader = DataLoader(
-        trainset, batch_size=batch_size, shuffle=True
+        trainset, batch_size=train_batch_size, shuffle=True, num_workers=8, pin_memory=True
     )
 
     validloader = DataLoader(
-        validset, batch_size=batch_size, shuffle=True
+        validset, batch_size=valid_batch_size, shuffle=True, num_workers=8, pin_memory=True
     )
 
     testloader = DataLoader(
-        testset, batch_size=batch_size, shuffle=False,
-    ) 
+        testset, batch_size=test_batch_size, shuffle=False, num_workers=8, pin_memory=True
+    )
 
     return _dataloader(train=trainloader, validation=validloader, test=testloader)
 
@@ -50,23 +51,26 @@ def load_MNIST(root: str, download: bool = False, validation = 5000, **kwargs):
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize(mean=[0.1307], std=[0.3081])]
     )
-    batch_size = kwargs.get("batch_size", 60)
 
     trainset = MNIST(root=root, train=True, download=download, transform=transform)
     trainset, validset = _validation_split(trainset, validation)
 
     testset = MNIST(root=root, train=False, download=download, transform=transform)
 
+    train_batch_size = kwargs.get("batch_size", 60)
+    valid_batch_size = kwargs.get("validation_batch_size", train_batch_size)
+    test_batch_size = kwargs.get("test_batch_size", train_batch_size)
+
     trainloader = DataLoader(
-        trainset, batch_size=batch_size, shuffle=True
+        trainset, batch_size=train_batch_size, shuffle=True, num_workers=8, pin_memory=True
     )
 
     validloader = DataLoader(
-        validset, batch_size=batch_size, shuffle=True
+        validset, batch_size=valid_batch_size, shuffle=True, num_workers=8, pin_memory=True
     )
 
     testloader = DataLoader(
-        testset, batch_size=batch_size, shuffle=False
+        testset, batch_size=test_batch_size, shuffle=False, num_workers=8, pin_memory=True
     )
 
     return _dataloader(train=trainloader, validation=validloader, test=testloader)

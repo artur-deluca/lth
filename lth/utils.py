@@ -29,6 +29,8 @@ def _get_device():
             logger.warning('CUDA is not supported in current device, using CPU instead')
         else:
             device = torch.device(os.getenv('device'))
+            torch.backends.cudnn.benchmark = True
+
     return device
 
 
