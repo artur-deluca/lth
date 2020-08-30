@@ -48,7 +48,7 @@ def iterative_pruning(
         for inputs, labels in dataloader:
 
             if device: inputs, labels = inputs.to(device), labels.to(device)
-            print(inputs.type(), labels.type())
+            print(inputs.is_cuda, labels.is_cuda)
 
             with torch.no_grad():
 
