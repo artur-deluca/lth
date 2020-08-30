@@ -58,8 +58,8 @@ def load_MNIST(root: str, download: bool = False, validation = 5000, **kwargs):
     testset = MNIST(root=root, train=False, download=download, transform=transform)
 
     train_batch_size = kwargs.get("batch_size", 60)
-    valid_batch_size = kwargs.get("validation_batch_size", train_batch_size)
-    test_batch_size = kwargs.get("test_batch_size", train_batch_size)
+    valid_batch_size = kwargs.get("validation_batch_size", len(validset) // 5)
+    test_batch_size = kwargs.get("test_batch_size", len(testset) // 5)
 
     trainloader = DataLoader(
         trainset, batch_size=train_batch_size, shuffle=True, num_workers=8, pin_memory=True
