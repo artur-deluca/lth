@@ -73,6 +73,22 @@ def iterative_pruning(
 
         return loss, accuracy
 
+
+    template = namedtuple(
+        "checkpoint",
+        "iteration, train_loss, sparsity, valid_loss, valid_acc, test_loss, test_acc",
+    )
+
+    cp = template(
+        iteration=list(),
+        train_loss=list(),
+        sparsity=0.0,
+        valid_loss=list(),
+        valid_acc=list(),
+        test_loss=list(),
+        test_acc=list(),
+    )  # checkpoint
+
     for r in range(0, rounds + 1):
 
         min_loss = 1e10
@@ -86,19 +102,6 @@ def iterative_pruning(
 
         i = 0
 
-        template = namedtuple(
-            "checkpoint",
-            "iteration, train_loss, sparsity, valid_loss, valid_acc, test_loss, test_acc",
-        )
-        cp = template(
-            iteration=list(),
-            train_loss=list(),
-            sparsity=0.0,
-            valid_loss=list(),
-            valid_acc=list(),
-            test_loss=list(),
-            test_acc=list(),
-        )  # checkpoint
         best_model = dict()
 
         while i < iterations:
