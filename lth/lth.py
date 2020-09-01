@@ -36,8 +36,7 @@ def iterative_pruning(
 
     step = utils._get_eval_step(data.train)
     
-    meta = utils.build_meta(model, data, iterations=iterations, rounds=rounds, rate=prune.rate, prune_global=prune.globally, fc_rate=prune.fc_rate, step=step)
-    print(meta)
+    meta = utils.build_meta(model, data, iterations=iterations, rounds=rounds, rate=prune.rate, prune_global=prune.globally, fc_rate=prune.fc_rate, step=step, random=random)
 
     if random:
         original_weights = deepcopy(model)
