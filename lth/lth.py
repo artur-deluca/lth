@@ -78,11 +78,12 @@ def iterative_pruning(
         "checkpoint",
         "iteration, train_loss, sparsity, valid_loss, valid_acc, test_loss, test_acc",
     )
-
+    
+    sparsity = 0.0
     cp = template(
         iteration=list(),
         train_loss=list(),
-        sparsity=0.0,
+        sparsity=sparsity,
         valid_loss=list(),
         valid_acc=list(),
         test_loss=list(),
@@ -101,7 +102,6 @@ def iterative_pruning(
         model.load_state_dict(placeholder)
 
         i = 0
-
         best_model = dict()
 
         while i < iterations:
@@ -171,7 +171,7 @@ def iterative_pruning(
                     cp = template(
                         iteration=list(),
                         train_loss=list(),
-                        sparsity=0.0,
+                        sparsity=sparsity,
                         valid_loss=list(),
                         valid_acc=list(),
                         test_loss=list(),
@@ -194,7 +194,16 @@ def iterative_pruning(
 
         if r < rounds:
             model = prune_net(model, prune.rate, prune.fc_rate, prune.globally)
-            cp = cp._replace(sparsity=utils.sparsity(model, prune.globally))
+            sparsity = utils.sparsity(model, prune.globally)
+            cp = template(
+                iteration=list(),
+                train_loss=list(),
+                sparsity=sparsity,
+                valid_loss=list(),
+                valid_acc=list(),
+                test_loss=list(),
+                test_acc=list(),
+            )  # checkpoint
 
     logger.success("Finished pruning")
 
