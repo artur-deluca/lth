@@ -4,19 +4,19 @@ import torch.nn.functional as F
 from . import utils
 
 
-def resnet20(optim=utils.optim, lr=utils.lr, **kwargs):
+def resnet20(optim='SGD', lr=0.01, **kwargs):
     return ResNet(6, optim=optim, lr=lr, **kwargs)
 
 
-def resnet32(optim=utils.optim, lr=utils.lr, **kwargs):
+def resnet32(optim='SGD', lr=0.01, **kwargs):
     return ResNet(10, optim=optim, lr=lr, **kwargs)
 
 
-def resnet44(optim=utils.optim, lr=utils.lr, **kwargs):
+def resnet44(optim='SGD', lr=0.01, **kwargs):
     return ResNet(14, optim=optim, lr=lr, **kwargs)
 
 
-def resnet56(optim=utils.optim, lr=utils.lr, **kwargs):
+def resnet56(optim='SGD', lr=0.01, **kwargs):
     return ResNet(18, optim=optim, lr=lr, **kwargs)
 
 
@@ -25,8 +25,8 @@ class ResNet(utils.Base):
         self,
         depth: int,
         width: int = 16,
-        optim: str = utils.optim,
-        lr: float = utils.lr,
+        optim: str = 'SGD',
+        lr: float = 0.01,
         **kwargs
     ):
         super(ResNet, self).__init__()
@@ -41,7 +41,7 @@ class ResNet(utils.Base):
 
     def forward(self, x):
 
-        x = self.head()
+        x = self.head(x)
         x = self.body(x)
         x = F.avg_pool2d(x, x.size()[3])
         x = x.view(x.size(0), -1)

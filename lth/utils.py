@@ -1,4 +1,5 @@
 import csv
+import numbers
 import sys
 import os
 import re
@@ -8,8 +9,7 @@ from datetime import datetime
 import torch
 from loguru import logger
 
-
-def _set_logger(func):
+def _logger(func):
     def wrapper(*args, **kwargs):
         logger.remove(0)
         message_format = '<level>{level: <8}</level> {message}'
@@ -20,6 +20,45 @@ def _set_logger(func):
         func(*args, **kwargs)
     return wrapper
 
+def set_params(**kwargs):
+    if 'seed' in kwargs:
+        set_seed(kwargs['seed'])
+
+    if 'eval_step' in kwargs:
+        set_eval_step(kwargs['eval_step'])
+
+    if 'device' in kwargs:
+        set_device(kwargs['device'])
+
+    if 'verbosity' in kwargs:
+        set_verbosity(kwargs['verbose'])
+
+def set_seed(seed):
+    if not isinstance(seed, numbers.Number):
+        raise TypeError('Seed is not a number')
+    else:
+        os.environ['seed'] = str(seed)
+        torch.manual_seed(int(seed))
+
+def set_eval_step(step):
+    if not isinstance(step, numbers.Number):
+        raise TypeError('Step is not a number')
+    os.environ['eval_step'] = str(step)
+
+def set_verbosity(verbosity):
+    os.environ['verbosity'] = verbosity
+
+def set_device(device):
+    os.environ['device'] = device
+
+
+def _get_eval_step(train):
+    step = int(os.getenv('eval_step') or 1)
+
+    if step <= 0:
+        return len(train)
+
+    return step
 
 def _get_device():
 
@@ -31,7 +70,6 @@ def _get_device():
             device = torch.device(os.getenv('device'))
             torch.backends.cudnn.benchmark = True
 
-    print(device)
     return device
 
 
@@ -63,13 +101,16 @@ def _get_seed():
 
 
 def build_meta(model, data, **kwargs):
+
+    dataset = str(data.train.dataset.dataset)
+    dataset = dataset.split('\n')[0].strip('Dataset ')
     
     f = {
         'model': model._get_name(),
         'seed': _get_seed() or '',
         'device': os.getenv('device') or 'cpu',
         'optimizer': str(model.optim.name),
-        'dataset': str(data.train.dataset),
+        'dataset': dataset,
         'train_batch_size': data.train.batch_size,
         'train_size': len(data.train) * data.train.batch_size
     }
@@ -95,9 +136,14 @@ def write_epoch(checkpoint, directory):
 
     checkpoint = dict(checkpoint._asdict())
     os.makedirs(directory, exist_ok=True)
+    f = os.path.join(directory, "iterations.csv")
+    file_exists = os.path.isfile(f)
 
-    with open(os.path.join(directory, "iterations.csv"), 'a', newline='') as f:
+    with open(f, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=checkpoint.keys())
+
+        if not file_exists:
+            writer.writeheader() 
 
         for i, _ in enumerate(checkpoint['train_loss']):
             writer.writerow({k: v[i] for k, v in checkpoint.items()})
