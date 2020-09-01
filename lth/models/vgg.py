@@ -55,30 +55,25 @@ cfgs = {
 }
 
 
-def vgg19(batch_norm=False, optim='SGD', lr=0.01, **kwargs):
+def vgg19(batch_norm=False, optim="SGD", lr=0.01, **kwargs):
     return VGG("E", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def conv2(batch_norm=False, optim='Adam', lr=2e-4, **kwargs):
+def conv2(batch_norm=False, optim="Adam", lr=2e-4, **kwargs):
     return VGG("F", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def conv4(batch_norm=False, optim='Adam', lr=3e-4, **kwargs):
+def conv4(batch_norm=False, optim="Adam", lr=3e-4, **kwargs):
     return VGG("G", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def conv6(batch_norm=False, optim='Adam', lr=3e-4, **kwargs):
+def conv6(batch_norm=False, optim="Adam", lr=3e-4, **kwargs):
     return VGG("H", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
 class VGG(utils.Base):
     def __init__(
-        self,
-        cfg: str,
-        batch_norm: bool,
-        optim: str = 'SGD',
-        lr: float = 0.01,
-        **kwargs
+        self, cfg: str, batch_norm: bool, optim: str = "SGD", lr: float = 0.01, **kwargs
     ):
         super(VGG, self).__init__()
         self.head, self.tail = self._build_model(cfg, batch_norm)
@@ -117,7 +112,7 @@ class VGG(utils.Base):
         if cfg[-1] == "A":
             tail = [nn.Linear(512, 10)]
         else:
-            x = int(64 * 64 * 256/ cfg[-2])
+            x = int(64 * 64 * 256 / cfg[-2])
             tail = [nn.Linear(x, 256), nn.Linear(256, 256), nn.Linear(256, 10)]
 
         return nn.Sequential(*head), nn.Sequential(*tail)

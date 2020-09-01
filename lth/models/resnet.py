@@ -4,19 +4,19 @@ import torch.nn.functional as F
 from . import utils
 
 
-def resnet20(optim='SGD', lr=0.01, **kwargs):
+def resnet20(optim="SGD", lr=0.01, **kwargs):
     return ResNet(6, optim=optim, lr=lr, **kwargs)
 
 
-def resnet32(optim='SGD', lr=0.01, **kwargs):
+def resnet32(optim="SGD", lr=0.01, **kwargs):
     return ResNet(10, optim=optim, lr=lr, **kwargs)
 
 
-def resnet44(optim='SGD', lr=0.01, **kwargs):
+def resnet44(optim="SGD", lr=0.01, **kwargs):
     return ResNet(14, optim=optim, lr=lr, **kwargs)
 
 
-def resnet56(optim='SGD', lr=0.01, **kwargs):
+def resnet56(optim="SGD", lr=0.01, **kwargs):
     return ResNet(18, optim=optim, lr=lr, **kwargs)
 
 
@@ -25,7 +25,7 @@ class ResNet(utils.Base):
         self,
         depth: int,
         width: int = 16,
-        optim: str = 'SGD',
+        optim: str = "SGD",
         lr: float = 0.01,
         **kwargs
     ):

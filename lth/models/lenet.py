@@ -3,8 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from . import utils
 
-def lenet(optim='Adam', lr=1.2e-3, **kwargs):
+
+def lenet(optim="Adam", lr=1.2e-3, **kwargs):
     return LeNet(optim, lr, **kwargs)
+
 
 class LeNet(utils.Base):
     def __init__(self, optim: str, lr: float, **kwargs):

@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Base(nn.Module):
     def __init__(self):
         super(Base, self).__init__()
@@ -12,7 +13,7 @@ class Base(nn.Module):
     def _initialize_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
@@ -54,8 +55,7 @@ class Residual(Base):
 def get_models(name):
     return dict(inspect.getmembers(sys.modules[name], inspect.isfunction))
 
+
 def get_kwargs(fn, kwargs):
     keys = set(set(inspect.getfullargspec(fn).args) & set(kwargs.keys()))
     return {k: v for k, v in kwargs.items() if k in keys}
-
-
