@@ -55,19 +55,19 @@ cfgs = {
 }
 
 
-def vgg19(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
+def vgg19(batch_norm=False, optim='SGD', lr=0.01, **kwargs):
     return VGG("E", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def conv2(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
+def conv2(batch_norm=False, optim='Adam', lr=2e-4, **kwargs):
     return VGG("F", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def conv4(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
+def conv4(batch_norm=False, optim='Adam', lr=3e-4, **kwargs):
     return VGG("G", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
-def conv6(batch_norm=False, optim=utils.optim, lr=utils.lr, **kwargs):
+def conv6(batch_norm=False, optim='Adam', lr=3e-4, **kwargs):
     return VGG("H", batch_norm, optim=optim, lr=lr, **kwargs)
 
 
@@ -76,8 +76,8 @@ class VGG(utils.Base):
         self,
         cfg: str,
         batch_norm: bool,
-        optim: str = utils.optim,
-        lr: float = utils.lr,
+        optim: str = 'SGD',
+        lr: float = 0.01,
         **kwargs
     ):
         super(VGG, self).__init__()

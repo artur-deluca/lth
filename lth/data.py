@@ -18,8 +18,8 @@ def load_CIFAR10(root: str, download: bool = False, augment: bool = False, valid
 
     transform = transforms.Compose(_augment + _transform if augment else _transform)
     train_batch_size = kwargs.get("batch_size", 128)
-    valid_batch_size = kwargs.get("validation_batch_size", train_batch_size)
-    test_batch_size = kwargs.get("test_batch_size", train_batch_size)
+    valid_batch_size = kwargs.get("validation_batch_size", len(validset) // 10)
+    test_batch_size = kwargs.get("test_batch_size", len(testset) // 10)
 
     trainset = CIFAR10(root=root, train=True, download=download, transform=transform)
     trainset, validset = _validation_split(trainset, validation)
@@ -58,8 +58,8 @@ def load_MNIST(root: str, download: bool = False, validation = 5000, **kwargs):
     testset = MNIST(root=root, train=False, download=download, transform=transform)
 
     train_batch_size = kwargs.get("batch_size", 60)
-    valid_batch_size = kwargs.get("validation_batch_size", train_batch_size)
-    test_batch_size = kwargs.get("test_batch_size", train_batch_size)
+    valid_batch_size = kwargs.get("validation_batch_size", len(validset) // 5)
+    test_batch_size = kwargs.get("test_batch_size", len(testset) // 5)
 
     trainloader = DataLoader(
         trainset, batch_size=train_batch_size, shuffle=True, num_workers=8, pin_memory=True
