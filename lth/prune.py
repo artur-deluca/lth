@@ -1,7 +1,9 @@
+import re
 from collections import namedtuple
 
-from torch import nn
+import torch
 import torch.nn.utils.prune as prune
+from torch import nn
 
 try:
     import utils
@@ -11,27 +13,62 @@ except ImportError:
 prune_container = namedtuple("prune_container", "rate, fc_rate, globally")
 
 
-def prune_net(model, rate, fc_rate=None, globally=False):
+def fetch_layers(model):
 
-    params = utils._fetch_layers(model)
-
-    if globally:
-        params = [
-            (layer, name) for layer, name in params if not isinstance(layer, nn.Linear)
+    loc = locals()
+    params = [name for name, _ in model.named_parameters()]
+    params = [re.sub(r"(\.)([0-9]+)", r"[\2]", name.split("_")[0]) for name in params]
+    params = [
+        (eval("model." + attr, loc), param_type)
+        for (attr, _, param_type, _) in [
+            re.split(r"(\.)(\w+$)", name) for name in params
         ]
-        prune.global_unstructured(
-            params, amount=rate, pruning_method=prune.L1Unstructured
-        )
-        return model
+    ]
 
-    if str(fc_rate).isnumeric():
-        rates = [
-            fc_rate if isinstance(layer, nn.Linear) else rate for layer, _ in params
-        ]
-    else:
-        rates = [rate for _ in range(len(params))]
+    return params
 
-    for (layer, param_type), rate in zip(params, rates):
-        prune.l1_unstructured(layer, name=param_type, amount=rate)
+
+def sparsity(model):
+
+    params = [getattr(layer, name) for layer, name in fetch_layers(model)]
+    layer_sparsity = [int(torch.sum(x == 0)) / x.nelement() for x in params]
+
+    return 100.0 * sum(layer_sparsity) / len(layer_sparsity)
+
+
+def prune_all(model, rate, prune_method=prune.l1_unstructured):
+
+    for (layer, param_type) in fetch_layers(model):
+        prune_method(layer, name=param_type, amount=rate)
 
     return model
+
+def prune_conv_globally(model, rate, pruning_class=prune.L1Unstructured):
+
+    params = fetch_layers(model)
+    params = [(layer, name) for layer, name in params if not isinstance(layer, nn.Linear)]
+
+    prune.global_unstructured(params, amount=rate, pruning_method=pruning_class)
+
+    return model
+
+def prune_fc(model, rate, prune_method=prune.l1_unstructured):
+
+    params = fetch_layers(model)
+    params = [(layer, name) for layer, name in params if isinstance(layer, nn.Linear)]
+
+    for (layer, param_type) in params:
+        prune_method(layer, name=param_type, amount=rate)
+
+    return model
+
+def prune_conv(model, rate, prune_method=prune.l1_unstructured):
+
+    params = fetch_layers(model)
+    params = [(layer, name) for layer, name in params if not isinstance(layer, nn.Linear)]
+
+    for (layer, param_type) in params:
+        prune_method(layer, name=param_type, amount=rate)
+
+    return model
+

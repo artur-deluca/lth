@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+from functools import partial
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 import torch
@@ -117,10 +118,24 @@ dataloader = data._dispatcher[datakey](
     os.path.join(args.data, datakey), batch_size=args.batch_size
 )
 
-prune_container = prune.prune_container(
-    rate=args.prune_rate, fc_rate=args.fc_rate, globally=args.prune_global
-)
+if args.prune_rate and args.prune_global:
+    prune_method = partial(prune.prune_conv_globally, rate=args.prune_rate)
+
+elif args.prune_rate and args.fc_rate:
+
+    def prune_method(model):
+
+        model = prune.prune_fc(model, args.fc_rate)
+        model = prune.prune_conv(model, args.prune_rate)
+
+        return model
+
+elif args.fc_rate:
+    prune_method = partial(prune.prune_fc, rate=args.prune_fc)
+
+else:
+    prune_method = partial(prune.prune_all, rate=args.prune_rate)
 
 lth.iterative_pruning(
-    model, dataloader, args.iter, args.rounds, prune_container, args.random
+    model, dataloader, args.iter, args.rounds, prune_method, args.random
 )

@@ -5,6 +5,7 @@ import os
 import re
 import json
 from datetime import datetime
+from inspect import signature
 
 import torch
 from loguru import logger
@@ -66,6 +67,28 @@ def _get_eval_step(train):
         return len(train)
 
     return step
+
+
+def _get_prune_meta(func):
+    meta = {'fn_name': _get_fn_name(func)}
+    args = signature(func).parameters.values()
+    meta['fn_args'] = ', '.join(str(x) for x in args)
+
+    return meta
+
+
+def _get_fn_name(func):
+    try:
+        name = func.__name__
+        return name
+
+    except AttributeError:
+        try:
+            name = func.func.__name__
+            return name
+
+        except AttributeError:
+            return None
 
 
 def _get_device():
@@ -158,31 +181,3 @@ def write_epoch(checkpoint, directory):
             writer.writerow({k: v[i] for k, v in checkpoint.items()})
 
 
-def _fetch_layers(model):
-
-    loc = locals()
-    params = [name for name, _ in model.named_parameters()]
-    params = [re.sub(r"(\.)([0-9]+)", r"[\2]", name.split("_")[0]) for name in params]
-    params = [
-        (eval("model." + attr, loc), param_type)
-        for (attr, _, param_type, _) in [
-            re.split(r"(\.)(\w+$)", name) for name in params
-        ]
-    ]
-
-    return params
-
-
-def sparsity(model, globally=False):
-
-    params = [getattr(layer, name) for layer, name in _fetch_layers(model)]
-    if globally:
-        return (
-            100.0
-            * sum([int(torch.sum(x == 0)) for x in params])
-            / sum([x.nelement() for x in params])
-        )
-
-    return 100.0 * (
-        sum([int(torch.sum(x == 0)) / x.nelement() for x in params]) / len(params)
-    )

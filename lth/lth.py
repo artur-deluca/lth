@@ -9,17 +9,16 @@ from loguru import logger
 
 try:
     import utils
-    from prune import prune_net
+    import prune
 
 except ImportError:
     from . import utils
-    from .prune import prune_net
-
+    from . import prune
 
 @logger.catch
 @utils._logger
 def iterative_pruning(
-    model, data, iterations: int, rounds: int, prune, random=False, **kwargs
+    model, data, iterations: int, rounds: int, prune_net, random=False, **kwargs
 ):
 
     save = utils._get_save_dir(
@@ -32,17 +31,16 @@ def iterative_pruning(
         model = model.to(device)
 
     step = utils._get_eval_step(data.train)
-
+    
+    prune_meta = utils._get_prune_meta(prune_net)
     meta = utils.build_meta(
         model,
         data,
         iterations=iterations,
         rounds=rounds,
-        rate=prune.rate,
-        prune_global=prune.globally,
-        fc_rate=prune.fc_rate,
         step=step,
         random=random,
+        **prune_meta
     )
 
     if random:
@@ -193,8 +191,8 @@ def iterative_pruning(
                     json.dump(meta, f)
 
         if r < rounds:
-            model = prune_net(model, prune.rate, prune.fc_rate, prune.globally)
-            sparsity = utils.sparsity(model, prune.globally)
+            model = prune_net(model)
+            sparsity = prune.sparsity(model)
             cp = template(
                 iteration=list(),
                 train_loss=list(),
