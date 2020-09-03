@@ -12,6 +12,7 @@ from loguru import logger
 
 
 def _logger(func):
+    """Logger decorator"""
     def wrapper(*args, **kwargs):
         logger.remove(0)
         message_format = "<level>{level: <8}</level> {message}"
@@ -25,6 +26,17 @@ def _logger(func):
 
 
 def set_params(**kwargs):
+    """Set all env vars at once
+    kwargs:
+        seed: int
+            refer to `set_seed`
+        eval_step: int
+            refer to `set_eval_step`
+        device: str
+            refer to `set_device`
+        verbosity: str
+            refer to `set_verbosity`
+    """
     if "seed" in kwargs:
         set_seed(kwargs["seed"])
 
@@ -39,6 +51,7 @@ def set_params(**kwargs):
 
 
 def set_seed(seed):
+    """Set random seed for the network"""
     if not isinstance(seed, numbers.Number):
         raise TypeError("Seed is not a number")
     else:
@@ -47,16 +60,23 @@ def set_seed(seed):
 
 
 def set_eval_step(step):
+    """Set iteration interval for evaluation (using a validation and/or testing dataset)
+    For instance, to evaluate network every 5 iterations, set `step` to 5.
+    To evaluate the network every epoch only, set `step` to -1
+    """
     if not isinstance(step, numbers.Number):
         raise TypeError("Step is not a number")
     os.environ["eval_step"] = str(step)
 
 
 def set_verbosity(verbosity):
+    """Set verbosity level
+    To see all the available levels, check loguru documentation"""
     os.environ["verbosity"] = verbosity
 
 
 def set_device(device):
+    """Set device for computation in torch"""
     os.environ["device"] = device
 
 
@@ -70,6 +90,7 @@ def _get_eval_step(train):
 
 
 def _get_prune_meta(func):
+    """Extract meta info from prune function"""
     meta = {'fn_name': _get_fn_name(func)}
     args = signature(func).parameters.values()
     meta['fn_args'] = ', '.join(str(x) for x in args)
