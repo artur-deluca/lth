@@ -1,6 +1,7 @@
 import math
 import os
 import json
+import time
 from copy import deepcopy
 from collections import namedtuple
 from typing import Callable
@@ -38,7 +39,6 @@ def iterative_pruning(
             Reset network parameters randomly each pruning round.
             If `False` parameters will be assigned to their original weights
     """
-
     if isinstance(data, DataLoader):
         data = data.datawrapper(train=data, validation=kwargs.get('validation'), test=kwargs.get('test'))
 
@@ -94,9 +94,9 @@ def iterative_pruning(
                 dataloss += loss.item()
 
             predictions = torch.argmax(outputs, dim=1)
-            correct += (predictions == labels).float().sum()
+            correct += (predictions == labels).float().sum().item()
 
-        accuracy = (correct / (len(dataloader) * dataloader.batch_size)).item()
+        accuracy = correct / (len(dataloader) * dataloader.batch_size)
         loss = dataloss / len(dataloader)
 
         return loss, accuracy
@@ -126,7 +126,6 @@ def iterative_pruning(
         # create placeholder to avoid any conflicts with the masks created by pruning
         # once pruned `layer.weight` becomes a multiplication of
         # `layer.original_weights` and `layer.weight_mask`
-
         placeholder = deepcopy(model.state_dict())
         keys = [label for label in placeholder.keys() if not label.endswith("_mask")]
         for k in original_weights.keys():
@@ -137,6 +136,7 @@ def iterative_pruning(
 
         i = 0
         best_model = dict()
+        start = time.time()
 
         while i < iterations:
             for inputs, labels in data.train:
@@ -194,12 +194,15 @@ def iterative_pruning(
 
                     epoch = (i + 1) // len(data.train)
                     loss = sum(cp.train_loss) / len(data.train)
+                    duration = time.time() - start 
+                    start = time.time()
 
                     message = f"[round: {r} | epoch: {epoch}] "
                     message += f"train: {loss:.3f} "
                     if cp.valid_loss:
                         message += f"validation: {cp.valid_loss[-1]:.4f} "
-                    message += f"| sparsity: {cp.sparsity:.0f}%"
+                    message += f"| sparsity: {cp.sparsity:.0f}% "
+                    message += f"| duration: {duration:.1f}s"
 
                     logger.info(message)
 

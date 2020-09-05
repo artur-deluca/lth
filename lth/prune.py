@@ -40,15 +40,20 @@ def sparsity(model):
     """
 
     params = [getattr(layer, name) for layer, name in fetch_layers(model)]
-    layer_sparsity = [int(torch.sum(x == 0)) / x.nelement() for x in params]
+    sparsity_layers = [int(torch.sum(x == 0)) for x in params]
+    size_layers = [int(x.nelement()) for x in params]
 
-    return 100.0 * sum(layer_sparsity) / len(layer_sparsity)
+    return 100.0 * sum(sparsity_layers) / sum(size_layers)
 
 
 def prune_all(model, rate, prune_method=prune.l1_unstructured):
 
-    for (layer, param_type) in fetch_layers(model):
+    layers = fetch_layers(model)
+    for (layer, param_type) in layers[:-2]:
         prune_method(layer, name=param_type, amount=rate)
+
+    for (layer, param_type) in layers[-2:]:
+        prune_method(layer, name=param_type, amount=rate / 2)
 
     return model
 
@@ -66,8 +71,11 @@ def prune_fc(model, rate, prune_method=prune.l1_unstructured):
     params = fetch_layers(model)
     params = [(layer, name) for layer, name in params if isinstance(layer, nn.Linear)]
 
-    for (layer, param_type) in params:
+    for (layer, param_type) in params[:-2]:
         prune_method(layer, name=param_type, amount=rate)
+
+    for (layer, param_type) in params[-2:]:
+        prune_method(layer, name=param_type, amount=rate / 2)
 
     return model
 
