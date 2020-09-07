@@ -3,6 +3,7 @@ import numbers
 import sys
 import os
 import re
+import shutil
 import json
 from datetime import datetime
 from inspect import signature
@@ -184,6 +185,10 @@ def build_meta(model, data, **kwargs):
 
     return f
 
+def _get_meta_file(path):
+    with open(f'{path}/meta.json', 'r') as f:
+        return json.load(f)
+
 
 def write_epoch(checkpoint, directory):
 
@@ -200,5 +205,24 @@ def write_epoch(checkpoint, directory):
 
         for i, _ in enumerate(checkpoint["train_loss"]):
             writer.writerow({k: v[i] for k, v in checkpoint.items()})
+
+def recover_training(path):
+
+    last_round = max([int(x) for x in os.listdir(path) if x.isnumeric()])
+    base = os.path.join(path, str(last_round)) 
+    best_weights = os.path.join(base, 'weights_best_model.pth')
+
+    if not os.path.isfile(best_weights):
+        shutil.rmtree(base, ignore_errors=True)
+        last_round, masks = recover_training(path)
+    else:
+        try:
+            os.remove(os.path.join(base, 'iterations.csv'))
+        except OSError:
+            pass
+        masks = torch.load(best_weights)
+        masks = {k: v for k, v in masks.items() if '_mask' in k}
+
+    return last_round, masks
 
 

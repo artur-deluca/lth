@@ -47,12 +47,30 @@ parser.add_argument(
           "To evaluate every epoch, use -1")
 )
 parser.add_argument(
+    "-rw",
+    "--rewind",
+    metavar="",
+    default=0,
+    type=int,
+    help=("Number of iterations to train in the first round "
+          "before using weights as reference for later rounds. "
+          "Set rewind between (0, 1) to use it as a percetage. "
+    )
+)
+parser.add_argument(
     "-pr",
     "--prune_rate",
     metavar="",
     default=0.2,
     type=float,
     help="Prunning rate 0-.99",
+)
+parser.add_argument(
+    "--recover",
+    metavar="",
+    default=None,
+    type=str,
+    help="Recover/resume interrupted training procedure",
 )
 parser.add_argument(
     "-s",

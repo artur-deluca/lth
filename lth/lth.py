@@ -4,7 +4,7 @@ import json
 import time
 from copy import deepcopy
 from collections import namedtuple
-from typing import Callable
+from typing import Callable, Union
 
 import torch
 from loguru import logger
@@ -18,10 +18,12 @@ except ImportError:
     from . import utils
     from . import prune
 
+Num = Union[int, float]
+
 @logger.catch
 @utils._logger
 def iterative_pruning(
-        model, data, iterations: int, rounds: int, prune_net: Callable, random=False, **kwargs
+        model, data, iterations: int, rounds: int, prune_net: Callable,  **kwargs
 ):
     """Iterative pruning
     Args:
@@ -31,6 +33,8 @@ def iterative_pruning(
             Named tuple containing train, validation and test dataloaders
             Alternatively, data can take a dataloader for the train set while
             validation and test dataloaders can be provided under kwargs
+        iterations: int
+            Number of iterations to train
         rounds: int
             Number of pruning rounds
         prune_net: function
@@ -38,13 +42,29 @@ def iterative_pruning(
         random: bool, default False
             Reset network parameters randomly each pruning round.
             If `False` parameters will be assigned to their original weights
+        rewind: float or int, default 0
+            Percentage (float) or number (int) of iterations to train before using weights
+            as reference in rewinding step in subsequent rounds. When set to 0, original weights are used.
+            When `random` is set to `True`, this argument is inoperative.
+        recover: str, default None
+            Path to folder containing progress from interrupted run.
+            Make sure to place the same configurations as the ones used in the previous attempt.
+            Additionally, by a functional limitation, the system will repeat the last successful round,
+            but this will be fixed in future versions.
     """
     if isinstance(data, DataLoader):
         data = data.datawrapper(train=data, validation=kwargs.get('validation'), test=kwargs.get('test'))
 
-    save = utils._get_save_dir(
-        model._get_name(), str(data.train.dataset.dataset), random
-    )
+    random = kwargs.get('random', False)
+    save = kwargs.get('recover', False)
+    recover = bool(save)
+
+    if not recover:
+        save = utils._get_save_dir(
+                model._get_name(),
+                str(data.train.dataset.dataset),
+                random
+        )
 
     logger.debug(f"save path: {save}")
 
@@ -56,29 +76,51 @@ def iterative_pruning(
     # get number of steps for evaluation (validation or test set)
     step = utils._get_eval_step(data.train)
     
-    # get meta vars of pruning function
-    prune_meta = utils._get_prune_meta(prune_net)
-    
-    # build meta file
-    meta = utils.build_meta(
-        model,
-        data,
-        iterations=iterations,
-        rounds=rounds,
-        step=step,
-        random=random,
-        **prune_meta
-    )
-
-    with open(os.path.join(save, "meta.json"), "w") as f:
-        json.dump(meta, f)
-
     if random:
         original_weights = deepcopy(model)
         original_weights._initialize_weights()
         original_weights = deepcopy(original_weights.state_dict())
     else:
         original_weights = deepcopy(model.state_dict())
+
+    rewind = kwargs.get('rewind', 0)
+    if rewind > 0 and rewind < 1:
+        rewind = int(rewind*iterations)
+    
+    # recover does not yet work with rewind
+    if recover:
+
+        meta = utils._get_meta_file(save)
+        init_round, masks = utils.recover_training(save)
+        model = prune_net(model)
+        placeholder = deepcopy(model.state_dict()) 
+        keys = [label for label in placeholder.keys() if label.endswith("_mask")]
+        for k in masks.keys():
+            placeholder[[x for x in keys if x.startswith(k)][0]] = masks[k]
+
+        model.load_state_dict(placeholder)
+
+
+    else:
+
+        init_round = 0
+        # get meta vars of pruning function
+        prune_meta = utils._get_prune_meta(prune_net)
+
+        # build meta file
+        meta = utils.build_meta(
+            model,
+            data,
+            iterations=iterations,
+            rounds=rounds,
+            step=step,
+            random=random,
+            rewind=rewind,
+            **prune_meta
+        )
+
+        with open(os.path.join(save, "meta.json"), "w") as f:
+            json.dump(meta, f)
 
     def evaluate(dataloader):
         dataloss, correct = 0.0, 0.0
@@ -107,7 +149,7 @@ def iterative_pruning(
         "iteration, train_loss, sparsity, valid_loss, valid_acc, test_loss, test_acc",
     )
     
-    sparsity = 0.0
+    sparsity = prune.sparsity(model) if init_round else 0.0
     cp = template(
         iteration=list(),
         train_loss=list(),
@@ -119,9 +161,7 @@ def iterative_pruning(
     )  # checkpoint
 
     # start train-prune rounds
-    for r in range(0, rounds + 1):
-
-        min_loss = 1e10
+    for r in range(init_round, rounds + 1):
 
         # create placeholder to avoid any conflicts with the masks created by pruning
         # once pruned `layer.weight` becomes a multiplication of
@@ -135,6 +175,7 @@ def iterative_pruning(
         model.load_state_dict(placeholder)
 
         i = 0
+        min_loss = 1e10
         best_model = dict()
         start = time.time()
 
@@ -222,13 +263,17 @@ def iterative_pruning(
                         test_acc=list(),
                     )  # checkpoint
 
+                if not r and not random and i == rewind:
+                    original_weights = deepcopy(model.state_dict())
+
                 i += 1
 
         # add summarized round info
         if data.validation:
-            meta["round_best_iteration"].append(best_iter)
+            meta["round_best_iteration"] = meta["round_best_iteration"][:r] + [best_iter]
+
             if data.test:
-                meta["round_test_error"].append(best_test_loss)
+                meta["round_test_error"] = meta["round_test_error"][:r] + [best_test_loss]
 
             if save:
                 torch.save(best_model, os.path.join(save, f"{r}/weights_best_model.pth"))

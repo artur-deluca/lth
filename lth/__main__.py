@@ -62,6 +62,9 @@ elif args.fc_rate:
 else:
     prune_method = partial(prune.prune_all, rate=args.prune_rate)
 
+params = {'random': args.random, 'rewind': args.rewind, 'recover': args.recover}
+params = {key: value for key, value in params.items() if value}
+
 lth.iterative_pruning(
-    model, dataloader, args.iter, args.rounds, prune_method, args.random
+    model, dataloader, args.iter, args.rounds, prune_method, **params 
 )
