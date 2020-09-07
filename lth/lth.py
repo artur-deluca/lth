@@ -99,6 +99,7 @@ def iterative_pruning(
             placeholder[[x for x in keys if x.startswith(k)][0]] = masks[k]
 
         model.load_state_dict(placeholder)
+        model(next(iter(data.train))[0][0]) # update weights
 
 
     else:

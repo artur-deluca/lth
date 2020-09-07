@@ -13,7 +13,7 @@ except ImportError:
 prune_container = namedtuple("prune_container", "rate, fc_rate, globally")
 
 def fetch_layers(model):
-    """Fetch all layers as tuples according to `torch.nn.prune` format
+    """Fetch all parameters as tuples according to `torch.nn.prune` format
     Args
         model: nn.Module
     Returns:
@@ -34,10 +34,29 @@ def fetch_layers(model):
     return params
 
 
+def fetch_buffers(model):
+    """Fetch all named buffers"""
+
+    loc = locals()
+    buffers = [name for name, _ in model.named_buffers()]
+    buffers = [re.sub(r"(\.)([0-9]+)", r"[\2]", name.split("_")[0]) for name in buffers]
+    buffers = [
+        (eval("model." + attr, loc), param_type)
+        for (attr, _, param_type, _) in [
+            re.split(r"(\.)(\w+$)", name) for name in buffers
+        ]
+    ]
+
+    return buffers
+
+
+
 def sparsity(model):
     """Get model sparsity in percentage.
     Sparsity is here calculated as the layer-wise average of null items across the network
     """
+    
+    buffers = fetch_buffers(model)
 
     params = [getattr(layer, name) for layer, name in fetch_layers(model)]
     sparsity_layers = [int(torch.sum(x == 0)) for x in params]
