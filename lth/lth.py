@@ -75,13 +75,16 @@ def iterative_pruning(
 
     # get number of steps for evaluation (validation or test set)
     step = utils._get_eval_step(data.train)
-    
-    if random:
-        original_weights = deepcopy(model)
-        original_weights._initialize_weights()
-        original_weights = deepcopy(original_weights.state_dict())
-    else:
-        original_weights = deepcopy(model.state_dict())
+    original_model = deepcopy(model)
+    original_weights = deepcopy(original_model.state_dict())
+
+    def get_weights(random):
+
+        if random:
+            original_model._initialize_weights()
+            return deepcopy(original_model.state_dict())
+
+        return original_weights
 
     rewind = kwargs.get('rewind', 0)
     if rewind > 0 and rewind < 1:
@@ -99,7 +102,7 @@ def iterative_pruning(
             placeholder[[x for x in keys if x.startswith(k)][0]] = masks[k]
 
         model.load_state_dict(placeholder)
-        model(next(iter(data.train))[0][0]) # update weights
+        with torch.no_grad(): model(next(iter(data.train))[0][0]) # update weights
 
 
     else:
@@ -168,6 +171,7 @@ def iterative_pruning(
         # once pruned `layer.weight` becomes a multiplication of
         # `layer.original_weights` and `layer.weight_mask`
         placeholder = deepcopy(model.state_dict())
+        original_weights = get_weights(random)
         keys = [label for label in placeholder.keys() if not label.endswith("_mask")]
         for k in original_weights.keys():
             placeholder[[x for x in keys if x.startswith(k)][0]] = original_weights[k]
@@ -265,7 +269,7 @@ def iterative_pruning(
                     )  # checkpoint
 
                 if not r and not random and i == rewind:
-                    original_weights = deepcopy(model.state_dict())
+                    if i: original_weights = deepcopy(model.state_dict())
 
                 i += 1
 
