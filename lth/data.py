@@ -8,9 +8,7 @@ from torchvision.datasets import CIFAR10, MNIST
 datawrapper = namedtuple("dataloader", ["train", "validation", "test"])
 
 # TODO: find better batch_size defaults
-def load_CIFAR10(
-    root: str, augment: bool = False, validation=5000, **kwargs
-):
+def load_CIFAR10(root: str, augment: bool = False, validation=5000, **kwargs):
     """Get CIFAR10 datawrapper
     Args:
         root: str
@@ -39,7 +37,9 @@ def load_CIFAR10(
     ]
     # data augmentation
     _augment = [transforms.RandomHorizontalFlip(), transforms.RandomCrop(32, 4)]
-    train_transform = transforms.Compose(_augment + _transform if augment else _transform)
+    train_transform = transforms.Compose(
+        _augment + _transform if augment else _transform
+    )
     test_transform = transforms.Compose(_transform)
 
     try:
@@ -50,15 +50,19 @@ def load_CIFAR10(
     except RuntimeError as err:
         while "invalid answer":
 
-            question = f'No dataset was found in {root}. Would you like to download it? [Y/n]: '
+            question = f"No dataset was found in {root}. Would you like to download it? [Y/n]: "
             reply = str(input(question)).lower().strip()
-            if not reply or reply[0] == 'y':
+            if not reply or reply[0] == "y":
 
-                trainset = CIFAR10(root=root, train=True, download=True, transform=train_transform)
-                testset = CIFAR10(root=root, train=False, download=True, transform=test_transform)
+                trainset = CIFAR10(
+                    root=root, train=True, download=True, transform=train_transform
+                )
+                testset = CIFAR10(
+                    root=root, train=False, download=True, transform=test_transform
+                )
                 break
 
-            elif reply[0] == 'n':
+            elif reply[0] == "n":
                 raise err
 
     validloader = None
@@ -82,7 +86,7 @@ def load_CIFAR10(
         num_workers=8,
         pin_memory=True,
     )
-    
+
     test_batch_size = kwargs.get("test_batch_size", 500)
     testloader = DataLoader(
         testset,
@@ -129,14 +133,18 @@ def load_MNIST(root: str, validation=5000, **kwargs):
     except RuntimeError as err:
         while "invalid answer":
 
-            question = f'No dataset was found in {root}. Would you like to download it? [Y/n]: '
+            question = f"No dataset was found in {root}. Would you like to download it? [Y/n]: "
             reply = str(input(question)).lower().strip()
-            if not reply or reply[0] == 'y':
-                trainset = MNIST(root=root, train=True, download=True, transform=transform)
-                testset = MNIST(root=root, train=False, download=True, transform=transform)
+            if not reply or reply[0] == "y":
+                trainset = MNIST(
+                    root=root, train=True, download=True, transform=transform
+                )
+                testset = MNIST(
+                    root=root, train=False, download=True, transform=transform
+                )
                 break
 
-            elif reply[0] == 'n':
+            elif reply[0] == "n":
                 raise err
 
     validloader = None

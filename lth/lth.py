@@ -20,10 +20,11 @@ except ImportError:
 
 Num = Union[int, float]
 
+
 @logger.catch
 @utils._logger
 def iterative_pruning(
-        model, data, iterations: int, rounds: int, prune_net: Callable,  **kwargs
+    model, data, iterations: int, rounds: int, prune_net: Callable, **kwargs
 ):
     """Iterative pruning
     Args:
@@ -53,17 +54,18 @@ def iterative_pruning(
             but this will be fixed in future versions.
     """
     if isinstance(data, DataLoader):
-        data = data.datawrapper(train=data, validation=kwargs.get('validation'), test=kwargs.get('test'))
+        data = data.datawrapper(
+            train=data, validation=kwargs.get("validation"), test=kwargs.get("test")
+        )
 
-    random = kwargs.get('random', False)
-    save = kwargs.get('recover', False)
+    
+    random = kwargs.get("random", False)
+    save = kwargs.get("recover", False)
     recover = bool(save)
 
     if not recover:
         save = utils._get_save_dir(
-                model._get_name(),
-                str(data.train.dataset.dataset),
-                random
+            model._get_name(), str(data.train.dataset.dataset), random
         )
 
     logger.debug(f"save path: {save}")
@@ -86,24 +88,24 @@ def iterative_pruning(
 
         return original_weights
 
-    rewind = kwargs.get('rewind', 0)
+    rewind = kwargs.get("rewind", 0)
     if rewind > 0 and rewind < 1:
-        rewind = int(rewind*iterations)
-    
+        rewind = int(rewind * iterations)
+
     # recover does not yet work with rewind
     if recover:
 
         meta = utils._get_meta_file(save)
         init_round, masks = utils.recover_training(save)
         model = prune_net(model)
-        placeholder = deepcopy(model.state_dict()) 
+        placeholder = deepcopy(model.state_dict())
         keys = [label for label in placeholder.keys() if label.endswith("_mask")]
         for k in masks.keys():
             placeholder[[x for x in keys if x.startswith(k)][0]] = masks[k]
 
         model.load_state_dict(placeholder)
-        with torch.no_grad(): model(next(iter(data.train))[0][0]) # update weights
-
+        with torch.no_grad():
+            model(next(iter(data.train))[0][0])  # update weights
 
     else:
 
@@ -120,7 +122,7 @@ def iterative_pruning(
             step=step,
             random=random,
             rewind=rewind,
-            **prune_meta
+            **prune_meta,
         )
 
         with open(os.path.join(save, "meta.json"), "w") as f:
@@ -152,7 +154,7 @@ def iterative_pruning(
         "checkpoint",
         "iteration, train_loss, sparsity, valid_loss, valid_acc, test_loss, test_acc",
     )
-    
+
     sparsity = prune.sparsity(model) if init_round else 0.0
     cp = template(
         iteration=list(),
@@ -178,6 +180,7 @@ def iterative_pruning(
 
         # replace weights
         model.load_state_dict(placeholder)
+        logger.warning(model.state_dict()[list(model.state_dict().keys())[0]][0])
 
         i = 0
         min_loss = 1e10
@@ -215,7 +218,7 @@ def iterative_pruning(
                         cp.valid_acc.append(valid_acc)
 
                         # 'early stopping' is emulated in this stage according to Frankle and Carbin (2019)
-                        # here we store the best performing model according to the validation set 
+                        # here we store the best performing model according to the validation set
                         if valid_loss < min_loss:
                             best_iter = i
                             min_loss = valid_loss
@@ -224,7 +227,7 @@ def iterative_pruning(
                             best_test_loss = test_loss if data.test else None
 
                 else:
-                    
+
                     # adding `nan` to keep columns at the same dimension
                     # if `step == 1` this part is unnecessary
                     if data.test:
@@ -240,7 +243,7 @@ def iterative_pruning(
 
                     epoch = (i + 1) // len(data.train)
                     loss = sum(cp.train_loss) / len(data.train)
-                    duration = time.time() - start 
+                    duration = time.time() - start
                     start = time.time()
 
                     message = f"[round: {r} | epoch: {epoch}] "
@@ -269,19 +272,26 @@ def iterative_pruning(
                     )  # checkpoint
 
                 if not r and not random and i == rewind:
-                    if i: original_weights = deepcopy(model.state_dict())
+                    if i:
+                        original_weights = deepcopy(model.state_dict())
 
                 i += 1
 
         # add summarized round info
         if data.validation:
-            meta["round_best_iteration"] = meta["round_best_iteration"][:r] + [best_iter]
+            meta["round_best_iteration"] = meta["round_best_iteration"][:r] + [
+                best_iter
+            ]
 
             if data.test:
-                meta["round_test_error"] = meta["round_test_error"][:r] + [best_test_loss]
+                meta["round_test_error"] = meta["round_test_error"][:r] + [
+                    best_test_loss
+                ]
 
             if save:
-                torch.save(best_model, os.path.join(save, f"{r}/weights_best_model.pth"))
+                torch.save(
+                    best_model, os.path.join(save, f"{r}/weights_best_model.pth")
+                )
                 with open(os.path.join(save, "meta.json"), "w") as f:
                     json.dump(meta, f)
 

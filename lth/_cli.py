@@ -43,8 +43,10 @@ parser.add_argument(
     metavar="",
     default=None,
     type=int,
-    help=("Evaluate validation and test set every x steps. "
-          "To evaluate every epoch, use -1")
+    help=(
+        "Evaluate validation and test set every x steps. "
+        "To evaluate every epoch, use -1"
+    ),
 )
 parser.add_argument(
     "-rw",
@@ -52,10 +54,11 @@ parser.add_argument(
     metavar="",
     default=0,
     type=int,
-    help=("Number of iterations to train in the first round "
-          "before using weights as reference for later rounds. "
-          "Set rewind between (0, 1) to use it as a percetage. "
-    )
+    help=(
+        "Number of iterations to train in the first round "
+        "before using weights as reference for later rounds. "
+        "Set rewind between (0, 1) to use it as a percetage. "
+    ),
 )
 parser.add_argument(
     "-pr",

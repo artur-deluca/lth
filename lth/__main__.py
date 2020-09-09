@@ -39,7 +39,7 @@ model = load_model(**params)
 datakey = [k for k in data._dispatcher.keys() if args.dataset.lower() in k][0]
 load_dataset = data._dispatcher[datakey]
 
-params = {"root": os.path.join(args.data, datakey), 'train_batch_size': args.batch_size}
+params = {"root": os.path.join(args.data, datakey), "train_batch_size": args.batch_size}
 params = {key: value for key, value in params.items() if value is not None}
 dataloader = load_dataset(**params)
 
@@ -56,15 +56,14 @@ elif args.prune_rate and args.fc_rate:
 
         return model
 
+
 elif args.fc_rate:
     prune_method = partial(prune.prune_fc, rate=args.prune_fc)
 
 else:
     prune_method = partial(prune.prune_all, rate=args.prune_rate)
 
-params = {'random': args.random, 'rewind': args.rewind, 'recover': args.recover}
+params = {"random": args.random, "rewind": args.rewind, "recover": args.recover}
 params = {key: value for key, value in params.items() if value}
 
-lth.iterative_pruning(
-    model, dataloader, args.iter, args.rounds, prune_method, **params 
-)
+lth.iterative_pruning(model, dataloader, args.iter, args.rounds, prune_method, **params)

@@ -12,6 +12,7 @@ except ImportError:
 
 prune_container = namedtuple("prune_container", "rate, fc_rate, globally")
 
+
 def fetch_layers(model):
     """Fetch all parameters as tuples according to `torch.nn.prune` format
     Args
@@ -50,12 +51,11 @@ def fetch_buffers(model):
     return buffers
 
 
-
 def sparsity(model):
     """Get model sparsity in percentage.
     Sparsity is here calculated as the layer-wise average of null items across the network
     """
-    
+
     buffers = fetch_buffers(model)
 
     params = [getattr(layer, name) for layer, name in fetch_layers(model)]
@@ -76,14 +76,18 @@ def prune_all(model, rate, prune_method=prune.l1_unstructured):
 
     return model
 
+
 def prune_conv_globally(model, rate, pruning_class=prune.L1Unstructured):
 
     params = fetch_layers(model)
-    params = [(layer, name) for layer, name in params if not isinstance(layer, nn.Linear)]
+    params = [
+        (layer, name) for layer, name in params if not isinstance(layer, nn.Linear)
+    ]
 
     prune.global_unstructured(params, amount=rate, pruning_method=pruning_class)
 
     return model
+
 
 def prune_fc(model, rate, prune_method=prune.l1_unstructured):
 
@@ -98,13 +102,15 @@ def prune_fc(model, rate, prune_method=prune.l1_unstructured):
 
     return model
 
+
 def prune_conv(model, rate, prune_method=prune.l1_unstructured):
 
     params = fetch_layers(model)
-    params = [(layer, name) for layer, name in params if not isinstance(layer, nn.Linear)]
+    params = [
+        (layer, name) for layer, name in params if not isinstance(layer, nn.Linear)
+    ]
 
     for (layer, param_type) in params:
         prune_method(layer, name=param_type, amount=rate)
 
     return model
-
