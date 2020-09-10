@@ -61,17 +61,16 @@ import torch.nn.utils.prune as prune
 import lth
 
 # if data is not there, it will prompt you to download it
-# containing train, validation and test dataloaders
-dataloader = lth.data.load_MNIST('./datasets/mnist')
+dataloader = lth.data.load_MNIST('./datasets/mnist') # train, validation and test dataloaders
 
 class Custom_Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super(Custom_Model, self).__init__()
         self.net = nn.Sequential(
                 nn.Linear(784, 200),
                 nn.Linear(200, 100),
                 nn.Linear(100, 10)
-        )
+       )
         # there are some required attributes
         self.optim = torch.optim.Adam(self.parameters(), lr=0.05)
         self.optim.name = 'adam'
@@ -79,6 +78,7 @@ class Custom_Model(nn.Module):
         self.criterion = nn.CrossEntropyLoss()
 
     def forward(self, x):
+        x = x.view(x.size(0), -1)  # Flatten.
         return self.net(x)
     
     # defining required initialization method
@@ -97,11 +97,11 @@ def prune(net):
 
 iterations = 1200
 rounds = 15
+net = Custom_Model()
 
 lth.iterative_pruning(
     net, dataloader, iterations, rounds, prune
 )
-
 
 ```
 
