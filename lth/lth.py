@@ -180,7 +180,6 @@ def iterative_pruning(
 
         # replace weights
         model.load_state_dict(placeholder)
-        logger.warning(model.state_dict()[list(model.state_dict().keys())[0]][0])
 
         i = 0
         min_loss = 1e10
