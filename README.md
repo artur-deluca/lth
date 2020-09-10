@@ -49,6 +49,10 @@ optional arguments:
 
 # then, for instance
 > python lth lenet mnist --rounds 20 --prune_rate 0.2
+
+INFO     [round: 0 | epoch: 1] train: 0.974 validation: 0.3793 | sparsity: 0% | duration: 3.8s
+INFO     [round: 1 | epoch: 1] train: 1.547 validation: 0.4314 | sparsity: 20% | duration: 6.0s
+...
 ```
 > The code was written in Python 3.7 using Pytorch's [pruning module](https://pytorch.org/tutorials/intermediate/pruning_tutorial.html)
 You can also create a model and make your own pruning experiments:
