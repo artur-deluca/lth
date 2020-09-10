@@ -16,7 +16,10 @@ def _logger(func):
     """Logger decorator"""
 
     def wrapper(*args, **kwargs):
-        logger.remove(0)
+        try:
+            logger.remove(0)
+        except ValueError:
+            pass
         message_format = "<level>{level: <8}</level> {message}"
         if os.getenv("verbosity"):
             logger.add(sys.stderr, level=os.getenv("verbose"), format=message_format)

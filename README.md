@@ -64,8 +64,9 @@ import torch.nn.utils.prune as prune
 
 import lth
 
+# train, validation and test dataloaders
 # if data is not there, it will prompt you to download it
-dataloader = lth.data.load_MNIST('./datasets/mnist') # train, validation and test dataloaders
+dataloader = lth.data.load_MNIST('./datasets/mnist', validation=4500, validation_batch_size=200) 
 
 class Custom_Model(nn.Module):
     def __init__(self):
